@@ -30,10 +30,9 @@ struct Home {
 async fn home(file: web::Data<Arc<Mutex<String>>>) -> actix_web::Result<HttpResponse> {
     let locked_file = file.lock().unwrap();
     let file_path = locked_file.clone();
-    let mut md: String =
+    let mut markdown_input: String =
         fs::read_to_string(file_path).map_err(actix_web::error::ErrorInternalServerError)?;
-    let markdown_input = "hello world";
-    let parser = pulldown_cmark::Parser::new(markdown_input);
+    let parser = pulldown_cmark::Parser::new(&markdown_input);
 
     let mut html_output = String::new();
     pulldown_cmark::html::push_html(&mut html_output, parser);
