@@ -69,11 +69,16 @@ async fn main() -> std::io::Result<()> {
     if ip.lock().unwrap().as_str() == "0.0.0.0" {
         eprintln!("⚠️ Warning: Binding to 0.0.0.0 exposes your server to the entire network!");
         eprintln!("         Make sure you trust your network or firewall settings.");
-    } else {
-        if webbrowser::open(format!("http://localhost:{}/", port.load(Ordering::SeqCst)).as_str())
-            .is_ok()
-        {}
     }
+
+    println!("Server running at:");
+    println!(
+        " - localhost: http://{}:{}/",
+        ip.lock().unwrap(),
+        port.load(Ordering::SeqCst)
+    );
+
+    let _ = webbrowser::open(format!("http://localhost:{}/", port.load(Ordering::SeqCst)).as_str());
 
     HttpServer::new(move || {
         App::new()
