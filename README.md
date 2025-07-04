@@ -50,7 +50,7 @@ curl -sSfL https://raw.githubusercontent.com/santoshxshrestha/mdwatch/main/scrip
 
 ---
 
-### 🔹 3. Manual Build & Install
+### 3. Manual Build & Install
 
 If you prefer full control or want to customize the build:
 
