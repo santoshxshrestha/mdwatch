@@ -21,4 +21,3 @@ pub struct MdwatchArgs {
     #[clap(short, long, default_value_t = 3000)]
     pub port: u16,
 }
-
