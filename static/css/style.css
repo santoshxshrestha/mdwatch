@@ -4,39 +4,44 @@ body {
     padding: 2rem;
     font-family: system-ui, sans-serif;
     line-height: 1.6;
-    background-color: #fdfdfd;
-    color: #1c1c1c;
+    background-color: #181A1B;
+    color: #D3CFC9;
 }
 
 h1, h2, h3 {
-    color: #222;
+    color: #E0E0E0; 
 }
 
 code {
-    background: #eee;
+    background: #2D2F30;
     padding: 0.2em 0.4em;
     border-radius: 4px;
     font-family: monospace;
+    color: #F8F8F2;
 }
 
 pre {
-    background: #f4f4f4;
+    background: #2D2F30;
     padding: 1em;
     overflow-x: auto;
     border-radius: 4px;
+    color: #F8F8F2;
 }
 
 blockquote {
-    border-left: 4px solid #ccc;
+    border-left: 4px solid #555;
     padding-left: 1em;
-    color: #666;
+    color: #AAA;
+    background-color: #222426;
+    border-radius: 4px;
 }
 
 a {
-    color: #007acc;
+    color: #569CD6;
     text-decoration: none;
 }
 
 a:hover {
     text-decoration: underline;
 }
+
