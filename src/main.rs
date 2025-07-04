@@ -1,4 +1,5 @@
 #![allow(unused)]
+use pulldown_cmark;
 mod args;
 use actix_files::Files;
 use actix_web::App;
@@ -24,8 +25,14 @@ struct Home {
 
 #[get("/")]
 async fn home() -> impl Responder {
+    let markdown_input = "hello world";
+    let parser = pulldown_cmark::Parser::new(markdown_input);
+
+    let mut html_output = String::new();
+    pulldown_cmark::html::push_html(&mut html_output, parser);
+
     let template = Home {
-        content: String::from("Hello there this is the string out there "),
+        content: html_output,
     };
 
     HttpResponse::Ok()
@@ -37,7 +44,7 @@ async fn home() -> impl Responder {
 async fn main() -> std::io::Result<()> {
     let args = MdwatchArgs::parse();
 
-    let file = Arc::new(Mutex::new(String::new()));
+    let mut file = String::new();
     let port = Arc::new(AtomicU16::new(0));
     let ip = Arc::new(Mutex::new(String::new()));
 
@@ -47,7 +54,7 @@ async fn main() -> std::io::Result<()> {
             ip: i,
             port: p,
         } => {
-            *file.lock().unwrap() = f;
+            file.push_str(&f);
             *ip.lock().unwrap() = i;
             port.store(p, Ordering::SeqCst);
         }
@@ -58,7 +65,7 @@ async fn main() -> std::io::Result<()> {
             .service(Files::new("/static", "./static"))
             .service(home)
     })
-    .bind(("127.0.0.1", 8080))?
+    .bind((format!("{}, {}", *ip.lock().unwrap(), port.load(Ordering::SeqCst))))?
     .run()
     .await
 }
