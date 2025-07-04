@@ -1,6 +1,8 @@
 #![allow(unused)]
 use actix_web::web;
 use pulldown_cmark;
+use std::error::Error;
+use std::fs;
 mod args;
 use actix_files::Files;
 use actix_web::App;
@@ -25,7 +27,11 @@ struct Home {
 }
 
 #[get("/")]
-async fn home() -> impl Responder {
+async fn home(file: web::Data<Arc<Mutex<String>>>) -> actix_web::Result<HttpResponse> {
+    let locked_file = file.lock().unwrap();
+    let file_path = locked_file.clone();
+    let mut md: String =
+        fs::read_to_string(file_path).map_err(actix_web::error::ErrorInternalServerError)?;
     let markdown_input = "hello world";
     let parser = pulldown_cmark::Parser::new(markdown_input);
 
@@ -36,9 +42,9 @@ async fn home() -> impl Responder {
         content: html_output,
     };
 
-    HttpResponse::Ok()
+    Ok(HttpResponse::Ok()
         .content_type("text/html")
-        .body(template.render().unwrap())
+        .body(template.render().unwrap()))
 }
 
 #[actix_web::main]
