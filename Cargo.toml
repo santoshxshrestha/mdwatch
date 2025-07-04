@@ -2,6 +2,13 @@
 name = "mdwatch"
 version = "0.1.0"
 edition = "2024"
+authors = ["Santosh Shrestha <santoshxshrestha@gmail.com> "]
+description = "A simple CLI tool to live-preview Markdown files in your browser."
+license = "MIT"
+repository = "https://github.com/santoshxshrestha/mdwatch"
+homepage = "https://github.com/santoshxshrestha/mdwatch"
+documentation = "https://github.com/santoshxshrestha/mdwatch#readme"
+readme = "README.md"
 
 [dependencies]
 actix-files = "0.6.6"
