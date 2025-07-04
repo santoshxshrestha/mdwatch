@@ -10,6 +10,7 @@ use actix_web::HttpResponse;
 use actix_web::HttpServer;
 use actix_web::Responder;
 use actix_web::get;
+use ammonia::clean;
 use args::MdwatchArgs;
 use askama::Template;
 use clap::Parser;
@@ -36,6 +37,7 @@ async fn home(file: web::Data<Arc<Mutex<String>>>) -> actix_web::Result<HttpResp
 
     let mut html_output = String::new();
     pulldown_cmark::html::push_html(&mut html_output, parser);
+    html_output = clean(&html_output);
 
     let template = Home {
         content: html_output,
