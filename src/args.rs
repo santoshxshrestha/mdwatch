@@ -8,7 +8,6 @@ use clap::Parser;
     version,
     about = "A CLI tool to live-preview Markdown files in your browser using a local web server"
 )]
-
 pub struct MdwatchArgs {
     /// Path to the markdown file
     pub file: String,

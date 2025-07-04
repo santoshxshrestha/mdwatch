@@ -13,6 +13,8 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use std::sync::MutexGuard;
 use std::sync::atomic::AtomicU16;
+use std::sync::atomic::Ordering;
+use webbrowser::open;
 
 #[derive(Template)]
 #[template(path = "home.html")]
@@ -38,6 +40,18 @@ async fn main() -> std::io::Result<()> {
     let file = Arc::new(Mutex::new(String::new()));
     let port = Arc::new(AtomicU16::new(0));
     let ip = Arc::new(Mutex::new(String::new()));
+
+    match args {
+        MdwatchArgs {
+            file: f,
+            ip: i,
+            port: p,
+        } => {
+            *file.lock().unwrap() = f;
+            *ip.lock().unwrap() = i;
+            port.store(p, Ordering::SeqCst);
+        }
+    }
 
     HttpServer::new(move || {
         App::new()
