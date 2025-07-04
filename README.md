@@ -132,7 +132,7 @@ cargo uninstall mdwatch
 Run the tool with the required and optional arguments:
 
 ```bash
-mdwatch --file README.md [--ip 127.0.0.1] [--port 23000]
+mdwatch --file README.md [--ip 127.0.0.1] [--port 3000]
 
 ```
 
