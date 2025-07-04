@@ -1,4 +1,5 @@
 #![allow(unused)]
+use actix_web::web;
 use pulldown_cmark;
 mod args;
 use actix_files::Files;
@@ -44,7 +45,7 @@ async fn home() -> impl Responder {
 async fn main() -> std::io::Result<()> {
     let args = MdwatchArgs::parse();
 
-    let mut file = String::new();
+    let file = Arc::new(Mutex::new(String::new()));
     let port = Arc::new(AtomicU16::new(0));
     let ip = Arc::new(Mutex::new(String::new()));
 
@@ -54,18 +55,24 @@ async fn main() -> std::io::Result<()> {
             ip: i,
             port: p,
         } => {
-            file.push_str(&f);
+            *file.lock().unwrap() = f;
             *ip.lock().unwrap() = i;
             port.store(p, Ordering::SeqCst);
         }
     }
+    let ip_clone = Arc::clone(&ip);
+    let port_clone = Arc::clone(&port);
 
     HttpServer::new(move || {
         App::new()
             .service(Files::new("/static", "./static"))
             .service(home)
+            .app_data(web::Data::new(Arc::clone(&file)))
     })
-    .bind((format!("{}, {}", *ip.lock().unwrap(), port.load(Ordering::SeqCst))))?
+    .bind((
+        ip_clone.lock().unwrap().clone(),
+        port_clone.load(Ordering::SeqCst),
+    ))?
     .run()
     .await
 }
