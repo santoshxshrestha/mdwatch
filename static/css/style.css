@@ -1,0 +1,42 @@
+body {
+    max-width: 720px;
+    margin: auto;
+    padding: 2rem;
+    font-family: system-ui, sans-serif;
+    line-height: 1.6;
+    background-color: #fdfdfd;
+    color: #1c1c1c;
+}
+
+h1, h2, h3 {
+    color: #222;
+}
+
+code {
+    background: #eee;
+    padding: 0.2em 0.4em;
+    border-radius: 4px;
+    font-family: monospace;
+}
+
+pre {
+    background: #f4f4f4;
+    padding: 1em;
+    overflow-x: auto;
+    border-radius: 4px;
+}
+
+blockquote {
+    border-left: 4px solid #ccc;
+    padding-left: 1em;
+    color: #666;
+}
+
+a {
+    color: #007acc;
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
