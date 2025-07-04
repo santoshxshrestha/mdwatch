@@ -53,10 +53,4 @@ sudo chmod +x "$INSTALL_DIR/mdwatch"
 
 echo -e "${CHECK} mdwatch installed to ${INSTALL_DIR} and available in your PATH."
 
-echo -e "\n${BOLD}${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
-echo -e "${BOLD}  Nerd Font Required for Best Icon Support  ${RESET}"
-echo -e "  ${YELLOW}For best visual experience, set your terminal font to a Nerd Font."
-echo -e "  Download: ${CYAN}https://www.nerdfonts.com/font-downloads${RESET}"
-echo -e "${BOLD}${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}\n"
-
 echo -e "${CHECK} You can now run '${BOLD}mdwatch${RESET}' from anywhere in your terminal."
