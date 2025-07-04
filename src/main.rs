@@ -19,7 +19,7 @@ use std::sync::Mutex;
 use std::sync::MutexGuard;
 use std::sync::atomic::AtomicU16;
 use std::sync::atomic::Ordering;
-use webbrowser::open;
+use webbrowser;
 
 #[derive(Template)]
 #[template(path = "home.html")]
@@ -69,6 +69,15 @@ async fn main() -> std::io::Result<()> {
     }
     let ip_clone = Arc::clone(&ip);
     let port_clone = Arc::clone(&port);
+
+    if ip.lock().unwrap().as_str() == "0.0.0.0" {
+        eprintln!("⚠️ Warning: Binding to 0.0.0.0 exposes your server to the entire network!");
+        eprintln!("         Make sure you trust your network or firewall settings.");
+    } else {
+        if webbrowser::open(format!("http://localhost:{}/", port.load(Ordering::SeqCst)).as_str())
+            .is_ok()
+        {}
+    }
 
     HttpServer::new(move || {
         App::new()
