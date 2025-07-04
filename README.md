@@ -33,7 +33,7 @@ cargo binstall mdwatch
 
 ---
 
-### 🔹 2. Quick Install via Script
+### 2. Quick Install via Script
 
 **Alternative:** Installs the latest release binary to your system PATH.
 
@@ -89,17 +89,17 @@ If you prefer full control or want to customize the build:
 
 ---
 
-## 🗑️ Uninstallation
+## Uninstallation
 
 You can uninstall using the provided script or manually:
 
-### 🔹 1. Quick Uninstall via Script
+### 1. Quick Uninstall via Script
 
 ```bash
 curl -sSfL https://raw.githubusercontent.com/santoshxshrestha/mdwatch/main/scripts/uninstall.sh | bash
 ```
 
-### 🔹 2. Manual Uninstall
+### 2. Manual Uninstall
 
 Remove the binary from your PATH:
 
