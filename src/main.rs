@@ -9,11 +9,15 @@ use askama::Template;
 
 #[derive(Template)]
 #[template(path = "home.html")]
-struct Home;
+struct Home {
+    content: String,
+}
 
 #[get("/")]
 async fn home() -> impl Responder {
-    let template = Home;
+    let template = Home {
+        content: String::from("Hello there this is the string out there "),
+    };
 
     HttpResponse::Ok()
         .content_type("text/html")
