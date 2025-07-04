@@ -13,7 +13,7 @@ INFO="${CYAN}➜${RESET}"
 
 echo -e "${BOLD}${CYAN}"
 echo "┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓"
-echo "┃           mdserve Installer           ┃"
+echo "┃           mdwatch Installer           ┃"
 echo "┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛"
 echo -e "${RESET}"
 
@@ -27,31 +27,31 @@ else
     echo -e "${CHECK} Rust is already installed."
 fi
 
-echo -e "${INFO} Cloning mdserve repository..."
-if [ -d "$HOME/mdserve" ]; then
-    echo -e "${YELLOW}A previous mdserve directory exists. Updating repository...${RESET}"
-    cd "$HOME/mdserve"
+echo -e "${INFO} Cloning mdwatch repository..."
+if [ -d "$HOME/mdwatch" ]; then
+    echo -e "${YELLOW}A previous mdwatch directory exists. Updating repository...${RESET}"
+    cd "$HOME/mdwatch"
     git pull
 else
-    git clone --depth 1 --branch main https://github.com/santoshxshrestha/mdserve.git "$HOME/mdserve"
+    git clone --depth 1 --branch main https://github.com/santoshxshrestha/mdwatch.git "$HOME/mdwatch"
 fi
 
-echo -e "${INFO} Building mdserve in release mode..."
-cd "$HOME/mdserve"
+echo -e "${INFO} Building mdwatch in release mode..."
+cd "$HOME/mdwatch"
 cargo build --release
 
-BINARY_PATH="$HOME/mdserve/target/release/mdserve"
+BINARY_PATH="$HOME/mdwatch/target/release/mdwatch"
 INSTALL_DIR="/usr/local/bin"
 if [ ! -f "$BINARY_PATH" ]; then
     echo -e "${FAIL} Error: Release binary not found at $BINARY_PATH."
     exit 1
 fi
 
-echo -e "${INFO} Installing mdserve to ${INSTALL_DIR} (may need sudo)..."
-sudo cp "$BINARY_PATH" "$INSTALL_DIR/mdserve"
-sudo chmod +x "$INSTALL_DIR/mdserve"
+echo -e "${INFO} Installing mdwatch to ${INSTALL_DIR} (may need sudo)..."
+sudo cp "$BINARY_PATH" "$INSTALL_DIR/mdwatch"
+sudo chmod +x "$INSTALL_DIR/mdwatch"
 
-echo -e "${CHECK} mdserve installed to ${INSTALL_DIR} and available in your PATH."
+echo -e "${CHECK} mdwatch installed to ${INSTALL_DIR} and available in your PATH."
 
 echo -e "\n${BOLD}${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
 echo -e "${BOLD}  Nerd Font Required for Best Icon Support  ${RESET}"
@@ -59,4 +59,4 @@ echo -e "  ${YELLOW}For best visual experience, set your terminal font to a Nerd
 echo -e "  Download: ${CYAN}https://www.nerdfonts.com/font-downloads${RESET}"
 echo -e "${BOLD}${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}\n"
 
-echo -e "${CHECK} You can now run '${BOLD}mdserve${RESET}' from anywhere in your terminal."
+echo -e "${CHECK} You can now run '${BOLD}mdwatch${RESET}' from anywhere in your terminal."

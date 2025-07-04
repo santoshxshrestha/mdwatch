@@ -13,29 +13,29 @@ INFO="${CYAN}➜${RESET}"
 
 echo -e "${BOLD}${CYAN}"
 echo "┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓"
-echo "┃           mdserve Uninstaller         ┃"
+echo "┃           mdwatch Uninstaller         ┃"
 echo "┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛"
 echo -e "${RESET}"
 
-INSTALL_PATH="/usr/local/bin/mdserve"
-REPO_DIR="$HOME/mdserve"
+INSTALL_PATH="/usr/local/bin/mdwatch"
+REPO_DIR="$HOME/mdwatch"
 
-echo -e "${INFO} Removing mdserve binary..."
+echo -e "${INFO} Removing mdwatch binary..."
 
 if [ ! -f "$INSTALL_PATH" ]; then
-    echo -e "${FAIL} mdserve binary not found at ${INSTALL_PATH}"
+    echo -e "${FAIL} mdwatch binary not found at ${INSTALL_PATH}"
 else
     sudo rm -f "$INSTALL_PATH"
-    echo -e "${CHECK} Removed mdserve binary from ${INSTALL_PATH}"
+    echo -e "${CHECK} Removed mdwatch binary from ${INSTALL_PATH}"
 fi
 
-echo -e "${INFO} Removing mdserve repository..."
+echo -e "${INFO} Removing mdwatch repository..."
 
 if [ ! -d "$REPO_DIR" ]; then
-    echo -e "${YELLOW}Warning: mdserve repository not found at ${REPO_DIR}${RESET}"
+    echo -e "${YELLOW}Warning: mdwatch repository not found at ${REPO_DIR}${RESET}"
 else
     rm -rf "$REPO_DIR"
-    echo -e "${CHECK} Removed mdserve repository at ${REPO_DIR}"
+    echo -e "${CHECK} Removed mdwatch repository at ${REPO_DIR}"
 fi
 
-echo -e "\n${BOLD}${GREEN}mdserve is completely removed from your system. ${CHECK}${RESET}"
+echo -e "\n${BOLD}${GREEN}mdwatch is completely removed from your system. ${CHECK}${RESET}"

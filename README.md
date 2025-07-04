@@ -10,12 +10,119 @@ A simple command-line tool to preview Markdown files in a web browser. It serves
 - Warns when binding to `0.0.0.0` to expose the server to the network
 - Sanitizes rendered HTML to prevent injection of unsafe content
 
-## Installation
+# Installation
 
-Build the project using Cargo:
+You have three options: via Cargo, via prebuilt script, or manual install.
+
+### 1. Easiest: Install via Cargo (Recommended)
+
+If you have Rust installed, you can install directly from [crates.io](https://crates.io):
 
 ```bash
-cargo build --release
+cargo install mdwatch
+```
+
+This is the most "Rusty" and portable way.  
+It automatically downloads, compiles, and installs the latest version to your `$HOME/.cargo/bin`.
+
+> If you want even faster installs with prebuilt binaries, check out [cargo-binstall](https://github.com/cargo-bins/cargo-binstall):
+
+```bash
+cargo binstall mdwatch
+```
+
+---
+
+### 🔹 2. Quick Install via Script
+
+**Alternative:** Installs the latest release binary to your system PATH.
+
+```bash
+curl -sSfL https://raw.githubusercontent.com/santoshxshrestha/mdwatch/main/scripts/install.sh | bash
+```
+
+- This script will:
+  1. Build `mdwatch` in release mode (if Rust is present).
+  2. Copy the binary to `/usr/local/bin`.
+  3. Make it executable.
+
+> **Tip:** You may need to enter your password for `sudo` privileges.
+
+---
+
+### 🔹 3. Manual Build & Install
+
+If you prefer full control or want to customize the build:
+
+1. **Clone the repository:**
+
+   ```bash
+   git clone https://github.com/santoshxshrestha/mdwatch.git
+   cd mdwatch
+   ```
+
+2. **Build the Release Binary:**
+
+   ```bash
+   cargo build --release
+   ```
+
+   This places the binary at `target/release/mdwatch`.
+
+3. **Copy to a PATH directory (e.g., `/usr/local/bin`):**
+
+   ```bash
+   sudo cp target/release/mdwatch /usr/local/bin/mdwatch
+   ```
+
+4. **(Optional) Ensure executable permission:**
+
+   ```bash
+   sudo chmod +x /usr/local/bin/mdwatch
+   ```
+
+5. **Run from anywhere:**
+
+   ```bash
+   mdwatch
+   ```
+
+---
+
+## 🗑️ Uninstallation
+
+You can uninstall using the provided script or manually:
+
+### 🔹 1. Quick Uninstall via Script
+
+```bash
+curl -sSfL https://raw.githubusercontent.com/santoshxshrestha/mdwatch/main/scripts/uninstall.sh | bash
+```
+
+### 🔹 2. Manual Uninstall
+
+Remove the binary from your PATH:
+
+```bash
+sudo rm /usr/local/bin/mdwatch
+```
+
+or
+
+```bash
+sudo rm /usr/bin/mdwatch
+```
+
+If you also want to remove your cloned repository:
+
+```bash
+rm -rf ~/mdwatch
+```
+
+If installed with Cargo:
+
+```bash
+cargo uninstall mdwatch
 ```
 
 ---
