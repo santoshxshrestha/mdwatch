@@ -1,14 +1,11 @@
-#![allow(unused)]
 use actix_web::web;
 use pulldown_cmark;
-use std::error::Error;
 use std::fs;
 mod args;
 use actix_files::Files;
 use actix_web::App;
 use actix_web::HttpResponse;
 use actix_web::HttpServer;
-use actix_web::Responder;
 use actix_web::get;
 use ammonia::clean;
 use args::MdwatchArgs;
@@ -16,7 +13,6 @@ use askama::Template;
 use clap::Parser;
 use std::sync::Arc;
 use std::sync::Mutex;
-use std::sync::MutexGuard;
 use std::sync::atomic::AtomicU16;
 use std::sync::atomic::Ordering;
 use webbrowser;
@@ -31,7 +27,7 @@ struct Home {
 async fn home(file: web::Data<Arc<Mutex<String>>>) -> actix_web::Result<HttpResponse> {
     let locked_file = file.lock().unwrap();
     let file_path = locked_file.clone();
-    let mut markdown_input: String =
+    let markdown_input: String =
         fs::read_to_string(file_path).map_err(actix_web::error::ErrorInternalServerError)?;
     let parser = pulldown_cmark::Parser::new(&markdown_input);
 
