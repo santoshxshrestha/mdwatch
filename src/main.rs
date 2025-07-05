@@ -170,11 +170,10 @@ a:hover {
                 button.textContent = '🌙';
             }
         });
-                 for (let i = 0; i < 1; i++) {
-                    setTimeout(() => {
-                        location.reload();
-                    }, 5000);
-                 }
+
+        fetch('/api/check-update').then(res => res.json()).then(data => {
+        console.log(data.last_modified)
+        })
     </script>
 </body>
 </html>
@@ -210,10 +209,8 @@ async fn home(
         .body(template.render().unwrap()))
 }
 
-async fn check_update(
-    file: web::Data<Arc<Mutex<String>>>,
-    last_modified: web::Data<Arc<AtomicU64>>,
-) -> actix_web::Result<HttpResponse> {
+#[get("/api/check-update")]
+async fn check_update(file: web::Data<Arc<Mutex<String>>>) -> actix_web::Result<HttpResponse> {
     let locked_file = file.lock().unwrap();
     let file_path = locked_file.clone();
 
@@ -243,6 +240,7 @@ async fn main() -> std::io::Result<()> {
     let file = Arc::new(Mutex::new(String::new()));
     let port = Arc::new(AtomicU16::new(0));
     let ip = Arc::new(Mutex::new(String::new()));
+    let last_modified = Arc::new(AtomicU64::new(0));
 
     match args {
         MdwatchArgs {
@@ -257,6 +255,7 @@ async fn main() -> std::io::Result<()> {
     }
     let ip_clone = Arc::clone(&ip);
     let port_clone = Arc::clone(&port);
+    let last_modified_clone = Arc::clone(&last_modified);
 
     if ip.lock().unwrap().as_str() == "0.0.0.0" {
         eprintln!("⚠️ Warning: Binding to 0.0.0.0 exposes your server to the entire network!");
@@ -275,6 +274,8 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(move || {
         App::new()
             .service(home)
+            .service(check_update)
+            .app_data(web::Data::new(last_modified_clone.clone()))
             .app_data(web::Data::new(Arc::clone(&file)))
     })
     .bind((
