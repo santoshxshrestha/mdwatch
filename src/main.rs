@@ -178,6 +178,7 @@ a:hover {
 )]
 struct Home {
     content: String,
+    last_modified: u64,
 }
 
 #[get("/")]
