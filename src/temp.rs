@@ -1,20 +1,6 @@
-#![allow(dead_code)]
-#![allow(unused)]
-use actix_web::cookie::time::format_description::modifier;
 use actix_web::web;
-use notify::Event;
-use notify::EventKind;
-use notify::RecommendedWatcher;
-use notify::RecursiveMode;
-use notify::Watcher;
 use pulldown_cmark;
 use std::fs;
-use std::path::Path;
-use std::sync::atomic::AtomicU64;
-use std::sync::mpsc::channel;
-use std::thread;
-use std::time::SystemTime;
-use std::time::UNIX_EPOCH;
 mod args;
 use actix_web::App;
 use actix_web::HttpResponse;
@@ -24,10 +10,15 @@ use ammonia::clean;
 use args::MdwatchArgs;
 use askama::Template;
 use clap::Parser;
+use notify::{Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
+use std::path::Path;
 use std::sync::Arc;
 use std::sync::Mutex;
-use std::sync::atomic::AtomicU16;
 use std::sync::atomic::Ordering;
+use std::sync::atomic::{AtomicU16, AtomicU64};
+use std::sync::mpsc::channel;
+use std::thread;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use webbrowser;
 
 #[derive(Template)]
@@ -143,15 +134,39 @@ a:hover {
 .theme-toggle:active {
     transform: scale(0.95);
 }
+
+.reload-indicator {
+    position: fixed;
+    top: 80px;
+    right: 20px;
+    background: var(--button-bg);
+    color: var(--button-color);
+    border: none;
+    border-radius: 20px;
+    padding: 8px 12px;
+    font-size: 12px;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+}
+
+.reload-indicator.visible {
+    opacity: 0.9;
+}
     </style>
 </head>
 <body>
     <button class=\"theme-toggle\" onclick=\"toggleTheme()\" title=\"Toggle theme\">
         🌙
     </button>
+    <div class=\"reload-indicator\" id=\"reloadIndicator\">
+        🔄 Reloading...
+    </div>
     <article id=\"content\">{{content | safe}}</article>
     
     <script>
+        let lastModified = {{last_modified}};
+        
         function toggleTheme() {
             const html = document.documentElement;
             const button = document.querySelector('.theme-toggle');
@@ -179,6 +194,51 @@ a:hover {
             } else {
                 button.textContent = '🌙';
             }
+            
+            // Start checking for file changes
+            checkForUpdates();
+        });
+        
+        function checkForUpdates() {
+            fetch('/api/check-update')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.last_modified > lastModified) {
+                        lastModified = data.last_modified;
+                        
+                        // Show reload indicator
+                        const indicator = document.getElementById('reloadIndicator');
+                        indicator.classList.add('visible');
+                        
+                        // Store current scroll position
+                        const scrollPercentage = window.pageYOffset / (document.body.scrollHeight - window.innerHeight);
+                        localStorage.setItem('scrollPosition', scrollPercentage);
+                        
+                        // Reload after a short delay
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 200);
+                    }
+                })
+                .catch(error => {
+                    // Silently handle errors - server might be restarting
+                    console.log('Connection lost, retrying...');
+                });
+            
+            // Check every 500ms
+            setTimeout(checkForUpdates, 500);
+        }
+        
+        // Restore scroll position after reload
+        window.addEventListener('load', function() {
+            const savedScrollPosition = localStorage.getItem('scrollPosition');
+            if (savedScrollPosition) {
+                setTimeout(() => {
+                    const scrollY = parseFloat(savedScrollPosition) * (document.body.scrollHeight - window.innerHeight);
+                    window.scrollTo(0, scrollY);
+                    localStorage.removeItem('scrollPosition');
+                }, 100);
+            }
         });
     </script>
 </body>
@@ -198,7 +258,7 @@ async fn home(
     let locked_file = file.lock().unwrap();
     let file_path = locked_file.clone();
     let markdown_input: String =
-        fs::read_to_string(file_path).map_err(actix_web::error::ErrorInternalServerError)?;
+        fs::read_to_string(&file_path).map_err(actix_web::error::ErrorInternalServerError)?;
     let parser = pulldown_cmark::Parser::new(&markdown_input);
 
     let mut html_output = String::new();
@@ -215,17 +275,37 @@ async fn home(
         .body(template.render().unwrap()))
 }
 
+#[get("/api/check-update")]
 async fn check_update(
     file: web::Data<Arc<Mutex<String>>>,
     last_modified: web::Data<Arc<AtomicU64>>,
 ) -> actix_web::Result<HttpResponse> {
     let locked_file = file.lock().unwrap();
     let file_path = locked_file.clone();
+
+    match fs::metadata(&file_path) {
+        Ok(metadata) => {
+            let modified_time = metadata
+                .modified()
+                .unwrap_or(SystemTime::UNIX_EPOCH)
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_secs();
+
+            Ok(HttpResponse::Ok().json(serde_json::json!({
+                "last_modified": modified_time
+            })))
+        }
+        Err(_) => Ok(HttpResponse::Ok().json(serde_json::json!({
+            "last_modified": 0
+        }))),
+    }
 }
 
 fn start_file_watcher(file_path: String, last_modified: Arc<AtomicU64>) {
     thread::spawn(move || {
         let (tx, rx) = channel();
+
         let mut watcher = RecommendedWatcher::new(
             move |res: Result<Event, notify::Error>| {
                 if let Ok(event) = res {
@@ -255,13 +335,13 @@ fn start_file_watcher(file_path: String, last_modified: Arc<AtomicU64>) {
                                         .as_secs();
 
                                     last_modified.store(modified_time, Ordering::SeqCst);
-                                    println!("File changed: {}", file_path);
+                                    println!("📝 File changed: {}", file_path);
                                 }
                             }
                         }
                     }
                 }
-                Err(e) => println!("File wather error: {:?}", e),
+                Err(e) => println!("File watcher error: {:?}", e),
             }
         }
     });
@@ -285,6 +365,8 @@ async fn main() -> std::io::Result<()> {
             *file.lock().unwrap() = f.clone();
             *ip.lock().unwrap() = i;
             port.store(p, Ordering::SeqCst);
+
+            // Get initial modification time
             if let Ok(metadata) = fs::metadata(&f) {
                 let modified_time = metadata
                     .modified()
@@ -294,6 +376,8 @@ async fn main() -> std::io::Result<()> {
                     .as_secs();
                 last_modified.store(modified_time, Ordering::SeqCst);
             }
+
+            // Start file watcher
             start_file_watcher(f, Arc::clone(&last_modified));
         }
     }
@@ -306,19 +390,23 @@ async fn main() -> std::io::Result<()> {
         eprintln!("         Make sure you trust your network or firewall settings.");
     }
 
-    println!("Server running at:");
+    println!("🚀 mdserve starting...");
     println!(
-        " - localhost: http://{}:{}/",
+        "📍 Server running at: http://{}:{}/",
         ip.lock().unwrap(),
         port.load(Ordering::SeqCst)
     );
+    println!("📁 Watching: {}", file.lock().unwrap());
+    println!("🔄 Auto-reload: enabled");
 
     let _ = webbrowser::open(format!("http://localhost:{}/", port.load(Ordering::SeqCst)).as_str());
 
     HttpServer::new(move || {
         App::new()
             .service(home)
+            .service(check_update)
             .app_data(web::Data::new(Arc::clone(&file)))
+            .app_data(web::Data::new(Arc::clone(&last_modified)))
     })
     .bind((
         ip_clone.lock().unwrap().clone(),
