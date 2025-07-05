@@ -171,9 +171,18 @@ a:hover {
             }
         });
 
-        fetch('/api/check-update').then(res => res.json()).then(data => {
-        console.log(data.last_modified)
-        })
+let lastSeen = Number(sessionStorage.getItem(\"lastSeen\") || 0);
+
+setInterval(() => {
+  fetch(\"/api/check-update\")
+    .then(res => res.json())
+    .then(data => {
+      if (data.last_modified > lastSeen) {
+        sessionStorage.setItem(\"lastSeen\", data.last_modified);
+        location.reload();
+      }
+    });
+}, 1000);
     </script>
 </body>
 </html>
