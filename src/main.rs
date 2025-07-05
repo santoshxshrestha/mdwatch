@@ -166,6 +166,11 @@ a:hover {
                 button.textContent = '🌙';
             }
         });
+                 for (let i = 0; i < 1; i++) {
+                    setTimeout(() => {
+                        location.reload();
+                    }, 5000);
+                 }
     </script>
 </body>
 </html>
