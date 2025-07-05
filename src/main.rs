@@ -1,6 +1,10 @@
+#![allow(unused)]
 use actix_web::web;
 use pulldown_cmark;
 use std::fs;
+use std::sync::atomic::AtomicU64;
+use std::time::SystemTime;
+use std::time::UNIX_EPOCH;
 mod args;
 use actix_web::App;
 use actix_web::HttpResponse;
@@ -166,6 +170,19 @@ a:hover {
                 button.textContent = '🌙';
             }
         });
+
+let lastSeen = Number(sessionStorage.getItem(\"lastSeen\") || 0);
+
+setInterval(() => {
+  fetch(\"/api/check-update\")
+    .then(res => res.json())
+    .then(data => {
+      if (data.last_modified > lastSeen) {
+        sessionStorage.setItem(\"lastSeen\", data.last_modified);
+        location.reload();
+      }
+    });
+}, 1000);
     </script>
 </body>
 </html>
@@ -173,10 +190,14 @@ a:hover {
 )]
 struct Home {
     content: String,
+    last_modified: u64,
 }
 
 #[get("/")]
-async fn home(file: web::Data<Arc<Mutex<String>>>) -> actix_web::Result<HttpResponse> {
+async fn home(
+    file: web::Data<Arc<Mutex<String>>>,
+    last_modified: web::Data<Arc<AtomicU64>>,
+) -> actix_web::Result<HttpResponse> {
     let locked_file = file.lock().unwrap();
     let file_path = locked_file.clone();
     let markdown_input: String =
@@ -189,11 +210,36 @@ async fn home(file: web::Data<Arc<Mutex<String>>>) -> actix_web::Result<HttpResp
 
     let template = Home {
         content: html_output,
+        last_modified: last_modified.load(Ordering::SeqCst),
     };
 
     Ok(HttpResponse::Ok()
         .content_type("text/html")
         .body(template.render().unwrap()))
+}
+
+#[get("/api/check-update")]
+async fn check_update(file: web::Data<Arc<Mutex<String>>>) -> actix_web::Result<HttpResponse> {
+    let locked_file = file.lock().unwrap();
+    let file_path = locked_file.clone();
+
+    match fs::metadata(&file_path) {
+        Ok(metadata) => {
+            let modified_time = metadata
+                .modified()
+                .unwrap_or(SystemTime::UNIX_EPOCH)
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_secs();
+
+            Ok(HttpResponse::Ok().json(serde_json::json!({
+                "last_modified": modified_time
+            })))
+        }
+        Err(_) => Ok(HttpResponse::Ok().json(serde_json::json!({
+            "last_modified": 0
+        }))),
+    }
 }
 
 #[actix_web::main]
@@ -203,6 +249,7 @@ async fn main() -> std::io::Result<()> {
     let file = Arc::new(Mutex::new(String::new()));
     let port = Arc::new(AtomicU16::new(0));
     let ip = Arc::new(Mutex::new(String::new()));
+    let last_modified = Arc::new(AtomicU64::new(0));
 
     match args {
         MdwatchArgs {
@@ -217,6 +264,7 @@ async fn main() -> std::io::Result<()> {
     }
     let ip_clone = Arc::clone(&ip);
     let port_clone = Arc::clone(&port);
+    let last_modified_clone = Arc::clone(&last_modified);
 
     if ip.lock().unwrap().as_str() == "0.0.0.0" {
         eprintln!("⚠️ Warning: Binding to 0.0.0.0 exposes your server to the entire network!");
@@ -235,6 +283,8 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(move || {
         App::new()
             .service(home)
+            .service(check_update)
+            .app_data(web::Data::new(last_modified_clone.clone()))
             .app_data(web::Data::new(Arc::clone(&file)))
     })
     .bind((
