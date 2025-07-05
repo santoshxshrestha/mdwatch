@@ -6,6 +6,7 @@ A simple command-line tool to preview Markdown files in a web browser. It serves
 
 - Serve a Markdown file as HTML via a local web server
 - Automatically open the preview in your default web browser
+- Auto reload on save
 - Supports specifying the file path, server IP, and port via command-line arguments
 - Warns when binding to `0.0.0.0` to expose the server to the network
 - Sanitizes rendered HTML to prevent injection of unsafe content
