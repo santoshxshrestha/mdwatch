@@ -3,6 +3,8 @@ use actix_web::web;
 use pulldown_cmark;
 use std::fs;
 use std::sync::atomic::AtomicU64;
+use std::time::SystemTime;
+use std::time::UNIX_EPOCH;
 mod args;
 use actix_web::App;
 use actix_web::HttpResponse;
@@ -206,6 +208,32 @@ async fn home(
     Ok(HttpResponse::Ok()
         .content_type("text/html")
         .body(template.render().unwrap()))
+}
+
+async fn check_update(
+    file: web::Data<Arc<Mutex<String>>>,
+    last_modified: web::Data<Arc<AtomicU64>>,
+) -> actix_web::Result<HttpResponse> {
+    let locked_file = file.lock().unwrap();
+    let file_path = locked_file.clone();
+
+    match fs::metadata(&file_path) {
+        Ok(metadata) => {
+            let modified_time = metadata
+                .modified()
+                .unwrap_or(SystemTime::UNIX_EPOCH)
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_secs();
+
+            Ok(HttpResponse::Ok().json(serde_json::json!({
+                "last_modified": modified_time
+            })))
+        }
+        Err(_) => Ok(HttpResponse::Ok().json(serde_json::json!({
+            "last_modified": 0
+        }))),
+    }
 }
 
 #[actix_web::main]
