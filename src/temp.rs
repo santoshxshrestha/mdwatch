@@ -1,8 +1,20 @@
+#![allow(dead_code)]
 #![allow(unused)]
+use actix_web::cookie::time::format_description::modifier;
 use actix_web::web;
+use notify::Event;
+use notify::EventKind;
+use notify::RecommendedWatcher;
+use notify::RecursiveMode;
+use notify::Watcher;
 use pulldown_cmark;
 use std::fs;
+use std::path::Path;
 use std::sync::atomic::AtomicU64;
+use std::sync::mpsc::channel;
+use std::thread;
+use std::time::SystemTime;
+use std::time::UNIX_EPOCH;
 mod args;
 use actix_web::App;
 use actix_web::HttpResponse;
@@ -168,11 +180,6 @@ a:hover {
                 button.textContent = '🌙';
             }
         });
-                 for (let i = 0; i < 1; i++) {
-                    setTimeout(() => {
-                        location.reload();
-                    }, 5000);
-                 }
     </script>
 </body>
 </html>
@@ -208,6 +215,76 @@ async fn home(
         .body(template.render().unwrap()))
 }
 
+async fn check_update(
+    file: web::Data<Arc<Mutex<String>>>,
+    last_modified: web::Data<Arc<AtomicU64>>,
+) -> actix_web::Result<HttpResponse> {
+    let locked_file = file.lock().unwrap();
+    let file_path = locked_file.clone();
+
+    match fs::metadata(&file_path) {
+        Ok(metadata) => {
+            let modified_time = metadata
+                .modified()
+                .unwrap_or(SystemTime::UNIX_EPOCH)
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_secs();
+
+            Ok(HttpResponse::Ok().json(serde_json::json!({
+                "last_modified": modified_time
+            })))
+        }
+        Err(_) => Ok(HttpResponse::Ok().json(serde_json::json!({
+            "last_modified": 0
+        }))),
+    }
+}
+
+fn start_file_watcher(file_path: String, last_modified: Arc<AtomicU64>) {
+    thread::spawn(move || {
+        let (tx, rx) = channel();
+        let mut watcher = RecommendedWatcher::new(
+            move |res: Result<Event, notify::Error>| {
+                if let Ok(event) = res {
+                    let _ = tx.send(event);
+                }
+            },
+            notify::Config::default(),
+        )
+        .unwrap();
+
+        if let Some(parent) = Path::new(&file_path).parent() {
+            watcher.watch(parent, RecursiveMode::NonRecursive).unwrap();
+        }
+
+        loop {
+            match rx.recv() {
+                Ok(event) => {
+                    if let EventKind::Modify(_) = event.kind {
+                        for path in event.paths {
+                            if path.to_string_lossy() == file_path {
+                                if let Ok(metadata) = fs::metadata(&file_path) {
+                                    let modified_time = metadata
+                                        .modified()
+                                        .unwrap_or(SystemTime::UNIX_EPOCH)
+                                        .duration_since(UNIX_EPOCH)
+                                        .unwrap()
+                                        .as_secs();
+
+                                    last_modified.store(modified_time, Ordering::SeqCst);
+                                    println!("File changed: {}", file_path);
+                                }
+                            }
+                        }
+                    }
+                }
+                Err(e) => println!("File wather error: {:?}", e),
+            }
+        }
+    });
+}
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     let args = MdwatchArgs::parse();
@@ -215,6 +292,7 @@ async fn main() -> std::io::Result<()> {
     let file = Arc::new(Mutex::new(String::new()));
     let port = Arc::new(AtomicU16::new(0));
     let ip = Arc::new(Mutex::new(String::new()));
+    let last_modified = Arc::new(AtomicU64::new(0));
 
     match args {
         MdwatchArgs {
@@ -222,11 +300,22 @@ async fn main() -> std::io::Result<()> {
             ip: i,
             port: p,
         } => {
-            *file.lock().unwrap() = f;
+            *file.lock().unwrap() = f.clone();
             *ip.lock().unwrap() = i;
             port.store(p, Ordering::SeqCst);
+            if let Ok(metadata) = fs::metadata(&f) {
+                let modified_time = metadata
+                    .modified()
+                    .unwrap_or(SystemTime::UNIX_EPOCH)
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs();
+                last_modified.store(modified_time, Ordering::SeqCst);
+            }
+            start_file_watcher(f, Arc::clone(&last_modified));
         }
     }
+
     let ip_clone = Arc::clone(&ip);
     let port_clone = Arc::clone(&port);
 
