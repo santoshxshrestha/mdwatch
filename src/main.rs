@@ -221,6 +221,24 @@ async fn check_update(
 ) -> actix_web::Result<HttpResponse> {
     let locked_file = file.lock().unwrap();
     let file_path = locked_file.clone();
+
+    match fs::metadata(&file_path) {
+        Ok(metadata) => {
+            let modified_time = metadata
+                .modified()
+                .unwrap_or(SystemTime::UNIX_EPOCH)
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_secs();
+
+            Ok(HttpResponse::Ok().json(serde_json::json!({
+                "last_modified": modified_time
+            })))
+        }
+        Err(_) => Ok(HttpResponse::Ok().json(serde_json::json!({
+            "last_modified": 0
+        }))),
+    }
 }
 
 fn start_file_watcher(file_path: String, last_modified: Arc<AtomicU64>) {
