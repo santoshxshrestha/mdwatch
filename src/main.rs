@@ -1,3 +1,4 @@
+#![allow(unused)]
 use actix_web::web;
 use pulldown_cmark;
 use std::fs;
