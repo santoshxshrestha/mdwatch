@@ -1,6 +1,6 @@
 [package]
 name = "mdwatch"
-version = "0.1.7"
+version = "0.1.8"
 edition = "2024"
 authors = ["Santosh Shrestha <santoshxshrestha@gmail.com> "]
 description = "A simple CLI tool to live-preview Markdown files in your browser."
