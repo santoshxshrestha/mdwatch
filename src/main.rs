@@ -2,6 +2,7 @@
 use actix_web::web;
 use pulldown_cmark;
 use std::fs;
+use std::path::Path;
 use std::sync::atomic::AtomicU64;
 use std::time::SystemTime;
 use std::time::UNIX_EPOCH;
@@ -29,7 +30,7 @@ use webbrowser;
 <head>
     <meta charset=\"UTF-8\" />
     <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />
-    <title>mdwatch</title>
+    <title>{{ title }} - mdwatch</title>
     <style>
 :root {
     --bg-color: #0d1117;
@@ -451,6 +452,7 @@ kbd {
 struct Home {
     content: String,
     last_modified: u64,
+    title: String,
 }
 
 #[get("/")]
@@ -460,8 +462,9 @@ async fn home(
 ) -> actix_web::Result<HttpResponse> {
     let locked_file = file.lock().unwrap();
     let file_path = locked_file.clone();
-    let markdown_input: String =
-        fs::read_to_string(file_path).map_err(actix_web::error::ErrorInternalServerError)?;
+    let file = Path::new(&file_path).file_name().unwrap();
+    let markdown_input: String = fs::read_to_string(file_path.clone())
+        .map_err(actix_web::error::ErrorInternalServerError)?;
     let parser = pulldown_cmark::Parser::new(&markdown_input);
 
     let mut html_output = String::new();
@@ -471,6 +474,7 @@ async fn home(
     let template = Home {
         content: html_output,
         last_modified: last_modified.load(Ordering::SeqCst),
+        title: file.to_string_lossy().to_string(),
     };
 
     Ok(HttpResponse::Ok()
