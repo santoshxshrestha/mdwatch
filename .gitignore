@@ -1,3 +1,4 @@
 /target
 test.md
 ./src/temp.rs
+.direnv/
