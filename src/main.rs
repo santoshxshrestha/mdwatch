@@ -2,6 +2,7 @@
 mod template;
 use actix_web::web;
 use pulldown_cmark;
+use pulldown_cmark::Options;
 use std::fs;
 use std::path::Path;
 use std::sync::atomic::AtomicU64;
@@ -33,7 +34,8 @@ async fn home(
     let file = Path::new(&file_path).file_name().unwrap();
     let markdown_input: String = fs::read_to_string(file_path.clone())
         .map_err(actix_web::error::ErrorInternalServerError)?;
-    let parser = pulldown_cmark::Parser::new(&markdown_input);
+    let mut options = Options::all();
+    let parser = pulldown_cmark::Parser::new_ext(&markdown_input, options);
 
     let mut html_output = String::new();
     pulldown_cmark::html::push_html(&mut html_output, parser);
