@@ -42,7 +42,7 @@ async fn home(
     html_output = clean(&html_output);
 
     let template = Home {
-        content: html_output,
+        content: format!("<pre>{}</pre>", html_output),
         last_modified: last_modified.load(Ordering::SeqCst),
         title: file.to_string_lossy().to_string(),
     };
