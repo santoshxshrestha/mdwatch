@@ -21,7 +21,7 @@ jobs:
           fetch-depth: 2
 
       - name: Set up Rust
-        uses: actions/setup-rust@v1
+        uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: stable
           components: rustfmt, clippy
