@@ -1,6 +1,5 @@
 mod template;
 use actix_web::web;
-use pulldown_cmark;
 use pulldown_cmark::Options;
 use std::fs;
 use std::path::Path;
@@ -20,7 +19,6 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use std::sync::atomic::AtomicU16;
 use std::sync::atomic::Ordering;
-use webbrowser;
 
 #[get("/")]
 async fn home(
@@ -60,7 +58,7 @@ async fn home(
     match template.render() {
         Ok(rendered) => Ok(HttpResponse::Ok().content_type("text/html").body(rendered)),
         Err(e) => {
-            eprintln!("Template rendering error: {}", e);
+            eprintln!("Template rendering error: {e}");
 
             Ok(HttpResponse::InternalServerError()
                 .content_type("text/plain")
@@ -94,14 +92,14 @@ async fn check_update(file: web::Data<Arc<Mutex<String>>>) -> actix_web::Result<
                 })))
             }
             Err(e) => {
-                eprintln!("Error: Failed to get modification time: {}", e);
+                eprintln!("Error: Failed to get modification time: {e}");
                 Ok(HttpResponse::InternalServerError().json(serde_json::json!({
                     "error": "Failed to read file modification time"
                 })))
             }
         },
         Err(e) => {
-            eprintln!("Warning: File not found or inaccessible: {}", e);
+            eprintln!("Warning: File not found or inaccessible: {e}");
             Ok(HttpResponse::Ok().json(serde_json::json!({
                 "last_modified": 0
             })))
@@ -118,22 +116,21 @@ async fn main() -> std::io::Result<()> {
     let ip = Arc::new(Mutex::new(String::new()));
     let last_modified = Arc::new(AtomicU64::new(0));
 
-    match args {
-        MdwatchArgs {
-            file: f,
-            ip: i,
-            port: p,
-        } => {
-            match file.lock() {
-                Ok(mut guard) => *guard = f,
-                Err(poisoned) => *poisoned.into_inner() = f,
-            }
-            match ip.lock() {
-                Ok(mut guard) => *guard = i,
-                Err(poisoned) => *poisoned.into_inner() = i,
-            }
-            port.store(p, Ordering::SeqCst);
+    let MdwatchArgs {
+        file: f,
+        ip: i,
+        port: p,
+    } = args;
+    {
+        match file.lock() {
+            Ok(mut guard) => *guard = f,
+            Err(poisoned) => *poisoned.into_inner() = f,
         }
+        match ip.lock() {
+            Ok(mut guard) => *guard = i,
+            Err(poisoned) => *poisoned.into_inner() = i,
+        }
+        port.store(p, Ordering::SeqCst);
     }
 
     let ip_clone = Arc::clone(&ip);
@@ -150,7 +147,7 @@ async fn main() -> std::io::Result<()> {
             }
         }
         Err(e) => {
-            eprintln!("Failed to acquire IP lock: {}", e);
+            eprintln!("Failed to acquire IP lock: {e}");
         }
     }
 
@@ -167,7 +164,7 @@ async fn main() -> std::io::Result<()> {
     if let Err(e) =
         webbrowser::open(format!("http://localhost:{}/", port.load(Ordering::SeqCst)).as_str())
     {
-        eprintln!("Failed to open browser: {}", e);
+        eprintln!("Failed to open browser: {e}");
     }
 
     HttpServer::new(move || {
