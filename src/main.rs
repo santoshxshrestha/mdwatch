@@ -58,14 +58,25 @@ async fn home(
         title: file.to_string_lossy().to_string(),
     };
 
-    Ok(HttpResponse::Ok()
-        .content_type("text/html")
-        .body(template.render().unwrap()))
+    match template.render() {
+        Ok(rendered) => Ok(HttpResponse::Ok().content_type("text/html").body(rendered)),
+        Err(e) => {
+            eprintln!("Template rendering error: {}", e);
+
+            Ok(HttpResponse::InternalServerError()
+                .content_type("text/plain")
+                .body("Failed to render template"))
+        }
+    }
 }
 
 #[get("/api/check-update")]
 async fn check_update(file: web::Data<Arc<Mutex<String>>>) -> actix_web::Result<HttpResponse> {
-    let locked_file = file.lock().unwrap();
+    let locked_file = match file.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+
     let file_path = locked_file.clone();
 
     match fs::metadata(&file_path) {
