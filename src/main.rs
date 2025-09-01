@@ -1,4 +1,3 @@
-#![allow(unused)]
 mod template;
 use actix_web::web;
 use pulldown_cmark;
@@ -6,7 +5,6 @@ use pulldown_cmark::Options;
 use std::fs;
 use std::path::Path;
 use std::sync::atomic::AtomicU64;
-use std::time::SystemTime;
 use std::time::UNIX_EPOCH;
 use template::Home;
 mod args;
@@ -29,12 +27,24 @@ async fn home(
     file: web::Data<Arc<Mutex<String>>>,
     last_modified: web::Data<Arc<AtomicU64>>,
 ) -> actix_web::Result<HttpResponse> {
-    let locked_file = file.lock().unwrap();
+    let locked_file = match file.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+
     let file_path = locked_file.clone();
-    let file = Path::new(&file_path).file_name().unwrap();
+    let file = match Path::new(&file_path).file_name() {
+        Some(name) => name,
+        None => {
+            return Err(actix_web::error::ErrorInternalServerError(
+                "Failed to get file name",
+            ));
+        }
+    };
+
     let markdown_input: String = fs::read_to_string(file_path.clone())
         .map_err(actix_web::error::ErrorInternalServerError)?;
-    let mut options = Options::all();
+    let options = Options::all();
     let parser = pulldown_cmark::Parser::new_ext(&markdown_input, options);
 
     let mut html_output = String::new();
@@ -47,32 +57,55 @@ async fn home(
         title: file.to_string_lossy().to_string(),
     };
 
-    Ok(HttpResponse::Ok()
-        .content_type("text/html")
-        .body(template.render().unwrap()))
+    match template.render() {
+        Ok(rendered) => Ok(HttpResponse::Ok().content_type("text/html").body(rendered)),
+        Err(e) => {
+            eprintln!("Template rendering error: {}", e);
+
+            Ok(HttpResponse::InternalServerError()
+                .content_type("text/plain")
+                .body("Failed to render template"))
+        }
+    }
 }
 
 #[get("/api/check-update")]
 async fn check_update(file: web::Data<Arc<Mutex<String>>>) -> actix_web::Result<HttpResponse> {
-    let locked_file = file.lock().unwrap();
+    let locked_file = match file.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+
     let file_path = locked_file.clone();
 
     match fs::metadata(&file_path) {
-        Ok(metadata) => {
-            let modified_time = metadata
-                .modified()
-                .unwrap_or(SystemTime::UNIX_EPOCH)
-                .duration_since(UNIX_EPOCH)
-                .unwrap()
-                .as_secs();
+        Ok(metadata) => match metadata.modified() {
+            Ok(modified_time) => {
+                let timestamp = modified_time
+                    .duration_since(UNIX_EPOCH)
+                    .map_err(|_| {
+                        eprintln!("Warning: System time is before UNIX epoch");
+                        actix_web::error::ErrorInternalServerError("Invalid system time")
+                    })?
+                    .as_secs();
 
+                Ok(HttpResponse::Ok().json(serde_json::json!({
+                    "last_modified": timestamp
+                })))
+            }
+            Err(e) => {
+                eprintln!("Error: Failed to get modification time: {}", e);
+                Ok(HttpResponse::InternalServerError().json(serde_json::json!({
+                    "error": "Failed to read file modification time"
+                })))
+            }
+        },
+        Err(e) => {
+            eprintln!("Warning: File not found or inaccessible: {}", e);
             Ok(HttpResponse::Ok().json(serde_json::json!({
-                "last_modified": modified_time
+                "last_modified": 0
             })))
         }
-        Err(_) => Ok(HttpResponse::Ok().json(serde_json::json!({
-            "last_modified": 0
-        }))),
     }
 }
 
@@ -91,28 +124,51 @@ async fn main() -> std::io::Result<()> {
             ip: i,
             port: p,
         } => {
-            *file.lock().unwrap() = f;
-            *ip.lock().unwrap() = i;
+            match file.lock() {
+                Ok(mut guard) => *guard = f,
+                Err(poisoned) => *poisoned.into_inner() = f,
+            }
+            match ip.lock() {
+                Ok(mut guard) => *guard = i,
+                Err(poisoned) => *poisoned.into_inner() = i,
+            }
             port.store(p, Ordering::SeqCst);
         }
     }
+
     let ip_clone = Arc::clone(&ip);
     let port_clone = Arc::clone(&port);
     let last_modified_clone = Arc::clone(&last_modified);
 
-    if ip.lock().unwrap().as_str() == "0.0.0.0" {
-        eprintln!("⚠️ Warning: Binding to 0.0.0.0 exposes your server to the entire network!");
-        eprintln!("         Make sure you trust your network or firewall settings.");
+    match ip.lock() {
+        Ok(guard) => {
+            if *guard == "0.0.0.0" {
+                eprintln!(
+                    "⚠️ Warning: Binding to 0.0.0.0 exposes your server to the entire network!"
+                );
+                eprintln!("         Make sure you trust your network or firewall settings.");
+            }
+        }
+        Err(e) => {
+            eprintln!("Failed to acquire IP lock: {}", e);
+        }
     }
 
     println!("Server running at:");
     println!(
         " - localhost: http://{}:{}/",
-        ip.lock().unwrap(),
+        match ip.lock() {
+            Ok(guard) => guard.clone(),
+            Err(poisoned) => poisoned.into_inner().clone(),
+        },
         port.load(Ordering::SeqCst)
     );
 
-    let _ = webbrowser::open(format!("http://localhost:{}/", port.load(Ordering::SeqCst)).as_str());
+    if let Err(e) =
+        webbrowser::open(format!("http://localhost:{}/", port.load(Ordering::SeqCst)).as_str())
+    {
+        eprintln!("Failed to open browser: {}", e);
+    }
 
     HttpServer::new(move || {
         App::new()
@@ -122,7 +178,13 @@ async fn main() -> std::io::Result<()> {
             .app_data(web::Data::new(Arc::clone(&file)))
     })
     .bind((
-        ip_clone.lock().unwrap().clone(),
+        ip_clone
+            .lock()
+            .map(|guard| guard.clone())
+            .unwrap_or_else(|poisoned| {
+                eprintln!("Failed to acquire IP lock {poisoned}, defaulting to 127.0.0.1");
+                "127.0.0.1".to_string()
+            }),
         port_clone.load(Ordering::SeqCst),
     ))?
     .run()
