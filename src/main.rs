@@ -124,11 +124,18 @@ async fn main() -> std::io::Result<()> {
             ip: i,
             port: p,
         } => {
-            *file.lock().unwrap() = f;
-            *ip.lock().unwrap() = i;
+            match file.lock() {
+                Ok(mut guard) => *guard = f,
+                Err(poisoned) => *poisoned.into_inner() = f,
+            }
+            match ip.lock() {
+                Ok(mut guard) => *guard = i,
+                Err(poisoned) => *poisoned.into_inner() = i,
+            }
             port.store(p, Ordering::SeqCst);
         }
     }
+
     let ip_clone = Arc::clone(&ip);
     let port_clone = Arc::clone(&port);
     let last_modified_clone = Arc::clone(&last_modified);
