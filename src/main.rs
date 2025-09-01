@@ -116,22 +116,21 @@ async fn main() -> std::io::Result<()> {
     let ip = Arc::new(Mutex::new(String::new()));
     let last_modified = Arc::new(AtomicU64::new(0));
 
-    match args {
-        MdwatchArgs {
-            file: f,
-            ip: i,
-            port: p,
-        } => {
-            match file.lock() {
-                Ok(mut guard) => *guard = f,
-                Err(poisoned) => *poisoned.into_inner() = f,
-            }
-            match ip.lock() {
-                Ok(mut guard) => *guard = i,
-                Err(poisoned) => *poisoned.into_inner() = i,
-            }
-            port.store(p, Ordering::SeqCst);
+    let MdwatchArgs {
+        file: f,
+        ip: i,
+        port: p,
+    } = args;
+    {
+        match file.lock() {
+            Ok(mut guard) => *guard = f,
+            Err(poisoned) => *poisoned.into_inner() = f,
         }
+        match ip.lock() {
+            Ok(mut guard) => *guard = i,
+            Err(poisoned) => *poisoned.into_inner() = i,
+        }
+        port.store(p, Ordering::SeqCst);
     }
 
     let ip_clone = Arc::clone(&ip);
