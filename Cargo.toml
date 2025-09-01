@@ -1,6 +1,6 @@
 [package]
 name = "mdwatch"
-version = "0.1.13"
+version = "0.1.14"
 edition = "2024"
 authors = ["Santosh Shrestha <santoshxshrestha@gmail.com> "]
 description = "A simple CLI tool to live-preview Markdown files in your browser."
@@ -12,9 +12,9 @@ readme = "README.md"
 
 [dependencies]
 actix-web = "4.11.0"
-ammonia = "4.1.0"
+ammonia = "4.1.1"
 askama = { version = "0.14.0", features = ["full"] }
-clap = { version = "4.5.40", features = ["derive"] }
+clap = { version = "4.5.46", features = ["derive"] }
 pulldown-cmark = "0.13.0"
-serde_json = "1.0.140"
+serde_json = "1.0.143"
 webbrowser = "1.0.5"
