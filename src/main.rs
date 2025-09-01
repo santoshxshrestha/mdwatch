@@ -140,9 +140,18 @@ async fn main() -> std::io::Result<()> {
     let port_clone = Arc::clone(&port);
     let last_modified_clone = Arc::clone(&last_modified);
 
-    if ip.lock().unwrap().as_str() == "0.0.0.0" {
-        eprintln!("⚠️ Warning: Binding to 0.0.0.0 exposes your server to the entire network!");
-        eprintln!("         Make sure you trust your network or firewall settings.");
+    match ip.lock() {
+        Ok(guard) => {
+            if *guard == "0.0.0.0" {
+                eprintln!(
+                    "⚠️ Warning: Binding to 0.0.0.0 exposes your server to the entire network!"
+                );
+                eprintln!("         Make sure you trust your network or firewall settings.");
+            }
+        }
+        Err(e) => {
+            eprintln!("Failed to acquire IP lock: {}", e);
+        }
     }
 
     println!("Server running at:");
