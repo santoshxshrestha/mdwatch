@@ -157,11 +157,18 @@ async fn main() -> std::io::Result<()> {
     println!("Server running at:");
     println!(
         " - localhost: http://{}:{}/",
-        ip.lock().unwrap(),
+        match ip.lock() {
+            Ok(guard) => guard.clone(),
+            Err(poisoned) => poisoned.into_inner().clone(),
+        },
         port.load(Ordering::SeqCst)
     );
 
-    let _ = webbrowser::open(format!("http://localhost:{}/", port.load(Ordering::SeqCst)).as_str());
+    if let Err(e) =
+        webbrowser::open(format!("http://localhost:{}/", port.load(Ordering::SeqCst)).as_str())
+    {
+        eprintln!("Failed to open browser: {}", e);
+    }
 
     HttpServer::new(move || {
         App::new()
