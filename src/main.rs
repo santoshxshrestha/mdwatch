@@ -178,7 +178,13 @@ async fn main() -> std::io::Result<()> {
             .app_data(web::Data::new(Arc::clone(&file)))
     })
     .bind((
-        ip_clone.lock().unwrap().clone(),
+        ip_clone
+            .lock()
+            .map(|guard| guard.clone())
+            .unwrap_or_else(|poisoned| {
+                eprintln!("Failed to acquire IP lock {poisoned}, defaulting to 127.0.0.1");
+                "127.0.0.1".to_string()
+            }),
         port_clone.load(Ordering::SeqCst),
     ))?
     .run()
