@@ -28,12 +28,24 @@ async fn home(
     file: web::Data<Arc<Mutex<String>>>,
     last_modified: web::Data<Arc<AtomicU64>>,
 ) -> actix_web::Result<HttpResponse> {
-    let locked_file = file.lock().unwrap();
+    let locked_file = match file.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+
     let file_path = locked_file.clone();
-    let file = Path::new(&file_path).file_name().unwrap();
+    let file = match Path::new(&file_path).file_name() {
+        Some(name) => name,
+        None => {
+            return Err(actix_web::error::ErrorInternalServerError(
+                "Failed to get file name",
+            ));
+        }
+    };
+
     let markdown_input: String = fs::read_to_string(file_path.clone())
         .map_err(actix_web::error::ErrorInternalServerError)?;
-    let mut options = Options::all();
+    let options = Options::all();
     let parser = pulldown_cmark::Parser::new_ext(&markdown_input, options);
 
     let mut html_output = String::new();
