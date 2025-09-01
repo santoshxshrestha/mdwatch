@@ -5,7 +5,6 @@ use pulldown_cmark::Options;
 use std::fs;
 use std::path::Path;
 use std::sync::atomic::AtomicU64;
-use std::time::SystemTime;
 use std::time::UNIX_EPOCH;
 use template::Home;
 mod args;
@@ -80,21 +79,33 @@ async fn check_update(file: web::Data<Arc<Mutex<String>>>) -> actix_web::Result<
     let file_path = locked_file.clone();
 
     match fs::metadata(&file_path) {
-        Ok(metadata) => {
-            let modified_time = metadata
-                .modified()
-                .unwrap_or(SystemTime::UNIX_EPOCH)
-                .duration_since(UNIX_EPOCH)
-                .unwrap()
-                .as_secs();
+        Ok(metadata) => match metadata.modified() {
+            Ok(modified_time) => {
+                let timestamp = modified_time
+                    .duration_since(UNIX_EPOCH)
+                    .map_err(|_| {
+                        eprintln!("Warning: System time is before UNIX epoch");
+                        actix_web::error::ErrorInternalServerError("Invalid system time")
+                    })?
+                    .as_secs();
 
+                Ok(HttpResponse::Ok().json(serde_json::json!({
+                    "last_modified": timestamp
+                })))
+            }
+            Err(e) => {
+                eprintln!("Error: Failed to get modification time: {}", e);
+                Ok(HttpResponse::InternalServerError().json(serde_json::json!({
+                    "error": "Failed to read file modification time"
+                })))
+            }
+        },
+        Err(e) => {
+            eprintln!("Warning: File not found or inaccessible: {}", e);
             Ok(HttpResponse::Ok().json(serde_json::json!({
-                "last_modified": modified_time
+                "last_modified": 0
             })))
         }
-        Err(_) => Ok(HttpResponse::Ok().json(serde_json::json!({
-            "last_modified": 0
-        }))),
     }
 }
 

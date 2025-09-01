@@ -427,6 +427,7 @@ kbd {
 </html>
 "
 )]
+#[allow(dead_code)]
 pub struct Home {
     pub content: String,
     pub last_modified: u64,
