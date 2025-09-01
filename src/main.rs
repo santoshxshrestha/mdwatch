@@ -1,4 +1,3 @@
-#![allow(unused)]
 mod template;
 use actix_web::web;
 use pulldown_cmark;
