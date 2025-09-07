@@ -1,6 +1,11 @@
 # mdwatch (Markdown Watcher CLI)
 
+<a href="https://repology.org/project/mdwatch/versions">
+    <img src="https://repology.org/badge/vertical-allrepos/mdwatch.svg" alt="Packaging status" align="right">
+</a>
+
 A simple command-line tool to preview Markdown files in a web browser. It serves the rendered HTML version of a Markdown file over HTTP, allowing you to easily preview your Markdown content locally.
+
 
 ## Features
 
