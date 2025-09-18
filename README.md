@@ -6,7 +6,6 @@
 
 A simple command-line tool to preview Markdown files in a web browser. It serves the rendered HTML version of a Markdown file over HTTP, allowing you to easily preview your Markdown content locally.
 
-
 ## Features
 
 - Serve a Markdown file as HTML via a local web server
@@ -110,7 +109,7 @@ nix run
 This will build and run the latest version of `mdwatch` from the flake in the current directory. You can pass arguments as usual:
 
 ```bash
-nix run . -- --file README.md [--ip 127.0.0.1] [--port 3000]
+nix run . -- README.md [--ip 127.0.0.1] [--port 3000]
 ```
 
 #### Directly from GitHub (no clone required)
@@ -118,7 +117,7 @@ nix run . -- --file README.md [--ip 127.0.0.1] [--port 3000]
 You can also run the latest version of `mdwatch` directly from GitHub, without cloning the repository:
 
 ```bash
-nix run github:santoshxshrestha/mdwatch -- --file README.md [--ip 127.0.0.1] [--port 3000]
+nix run github:santoshxshrestha/mdwatch -- README.md [--ip 127.0.0.1] [--port 3000]
 ```
 
 This will fetch, build, and run `mdwatch` from the official repository. You can pass any arguments after the `--` as usual.
@@ -134,6 +133,7 @@ nix develop
 This gives you a reproducible environment with everything needed to build, test, and run `mdwatch`.
 
 > **Note:**
+>
 > - You need Nix 2.4+ with flakes enabled. See the [Nix Flakes documentation](https://nixos.wiki/wiki/Flakes) for setup help.
 > - On NixOS, flakes are usually enabled by default. On other systems, you may need to add `experimental-features = nix-command flakes` to your `~/.config/nix/nix.conf`.
 
@@ -182,11 +182,11 @@ cargo uninstall mdwatch
 Run the tool with the required and optional arguments:
 
 ```bash
-mdwatch --file README.md [--ip 127.0.0.1] [--port 3000]
+mdwatch README.md [--ip 127.0.0.1] [--port 3000]
 
 ```
 
-- `--file`: Path to the Markdown file to preview (required)
+- `file`: Path to the Markdown file to preview (required)
 
 - `--ip`: IP address to bind the server to (default: 127.0.0.1)
 
@@ -203,7 +203,7 @@ mdwatch --file README.md [--ip 127.0.0.1] [--port 3000]
 # Example
 
 ```bash
-mdwatch --file notes.md --ip 0.0.0.0 --port 8080
+mdwatch  notes.md --ip 0.0.0.0 --port 8080
 ```
 
 This will serve the Markdown file accessible on all network interfaces and open the preview at
