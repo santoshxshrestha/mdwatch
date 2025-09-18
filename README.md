@@ -95,6 +95,50 @@ If you prefer full control or want to customize the build:
 
 ---
 
+## Using with Nix (Flakes)
+
+If you have [Nix](https://nixos.org/download.html) (version 2.4 or later) with flakes enabled, you can use `nix run` to run `mdwatch` without installing Rust or any dependencies globally. You can also use `nix develop` to get a full development environment for hacking on the project.
+
+### Run mdwatch instantly (no install needed)
+
+#### From the current directory
+
+```bash
+nix run
+```
+
+This will build and run the latest version of `mdwatch` from the flake in the current directory. You can pass arguments as usual:
+
+```bash
+nix run . -- --file README.md [--ip 127.0.0.1] [--port 3000]
+```
+
+#### Directly from GitHub (no clone required)
+
+You can also run the latest version of `mdwatch` directly from GitHub, without cloning the repository:
+
+```bash
+nix run github:santoshxshrestha/mdwatch -- --file README.md [--ip 127.0.0.1] [--port 3000]
+```
+
+This will fetch, build, and run `mdwatch` from the official repository. You can pass any arguments after the `--` as usual.
+
+### Enter a development environment
+
+If you want to contribute or develop, enter a shell with all dependencies (Rust, cargo, etc) using:
+
+```bash
+nix develop
+```
+
+This gives you a reproducible environment with everything needed to build, test, and run `mdwatch`.
+
+> **Note:**
+> - You need Nix 2.4+ with flakes enabled. See the [Nix Flakes documentation](https://nixos.wiki/wiki/Flakes) for setup help.
+> - On NixOS, flakes are usually enabled by default. On other systems, you may need to add `experimental-features = nix-command flakes` to your `~/.config/nix/nix.conf`.
+
+---
+
 ## Uninstallation
 
 You can uninstall using the provided script or manually:
