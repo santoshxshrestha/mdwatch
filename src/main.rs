@@ -17,20 +17,14 @@ use askama::Template;
 use clap::Parser;
 use std::sync::Arc;
 use std::sync::Mutex;
-use std::sync::atomic::AtomicU16;
 use std::sync::atomic::Ordering;
 
 #[get("/")]
 async fn home(
-    file: web::Data<Arc<Mutex<String>>>,
+    file: web::Data<String>,
     last_modified: web::Data<Arc<AtomicU64>>,
 ) -> actix_web::Result<HttpResponse> {
-    let locked_file = match file.lock() {
-        Ok(guard) => guard,
-        Err(poisoned) => poisoned.into_inner(),
-    };
-
-    let file_path = locked_file.clone();
+    let file_path = file.as_str();
     let file = match Path::new(&file_path).file_name() {
         Some(name) => name,
         None => {
@@ -40,8 +34,8 @@ async fn home(
         }
     };
 
-    let markdown_input: String = fs::read_to_string(file_path.clone())
-        .map_err(actix_web::error::ErrorInternalServerError)?;
+    let markdown_input: String =
+        fs::read_to_string(file_path).map_err(actix_web::error::ErrorInternalServerError)?;
     let options = Options::all();
     let parser = pulldown_cmark::Parser::new_ext(&markdown_input, options);
 
@@ -110,80 +104,32 @@ async fn check_update(file: web::Data<Arc<Mutex<String>>>) -> actix_web::Result<
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     let args = MdwatchArgs::parse();
-
-    let file = Arc::new(Mutex::new(String::new()));
-    let port = Arc::new(AtomicU16::new(0));
-    let ip = Arc::new(Mutex::new(String::new()));
     let last_modified = Arc::new(AtomicU64::new(0));
 
-    let MdwatchArgs {
-        file: f,
-        ip: i,
-        port: p,
-    } = args;
-    {
-        match file.lock() {
-            Ok(mut guard) => *guard = f,
-            Err(poisoned) => *poisoned.into_inner() = f,
-        }
-        match ip.lock() {
-            Ok(mut guard) => *guard = i,
-            Err(poisoned) => *poisoned.into_inner() = i,
-        }
-        port.store(p, Ordering::SeqCst);
-    }
+    let MdwatchArgs { file, ip, port } = args;
 
-    let ip_clone = Arc::clone(&ip);
-    let port_clone = Arc::clone(&port);
-    let last_modified_clone = Arc::clone(&last_modified);
-
-    match ip.lock() {
-        Ok(guard) => {
-            if *guard == "0.0.0.0" {
-                eprintln!(
-                    "⚠️ Warning: Binding to 0.0.0.0 exposes your server to the entire network!"
-                );
-                eprintln!("         Make sure you trust your network or firewall settings.");
-            }
-        }
-        Err(e) => {
-            eprintln!("Failed to acquire IP lock: {e}");
-        }
+    if ip == "0.0.0.0" {
+        eprintln!("⚠️ Warning: Binding to 0.0.0.0 exposes your server to the entire network!");
+        eprintln!("         Make sure you trust your network or firewall settings.");
     }
 
     println!("Server running at:");
-    println!(
-        " - localhost: http://{}:{}/",
-        match ip.lock() {
-            Ok(guard) => guard.clone(),
-            Err(poisoned) => poisoned.into_inner().clone(),
-        },
-        port.load(Ordering::SeqCst)
-    );
+    println!(" - http://{}:{}/", ip, port);
 
-    if let Err(e) =
-        webbrowser::open(format!("http://localhost:{}/", port.load(Ordering::SeqCst)).as_str())
-    {
+    if let Err(e) = webbrowser::open(&format!("http://localhost:{}/", port)) {
         eprintln!("Failed to open browser: {e}");
     }
+
+    let last_modified_clone = last_modified.clone();
 
     HttpServer::new(move || {
         App::new()
             .service(home)
             .service(check_update)
             .app_data(web::Data::new(last_modified_clone.clone()))
-            .app_data(web::Data::new(Arc::clone(&file)))
+            .app_data(web::Data::new(file.clone()))
     })
-    .bind((
-        ip_clone
-            .lock()
-            .map(|guard| guard.clone())
-            .unwrap_or_else(|poisoned| {
-                eprintln!("Failed to acquire IP lock {poisoned}, defaulting to 127.0.0.1");
-                "127.0.0.1".to_string()
-            }),
-        port_clone.load(Ordering::SeqCst),
-    ))?
+    .bind(format!("{}:{}", ip, port))?
     .run()
     .await
 }
