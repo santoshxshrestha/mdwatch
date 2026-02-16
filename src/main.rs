@@ -81,7 +81,7 @@ async fn home(
 
 #[get("/api/check-update")]
 async fn check_update(file: web::Data<String>) -> actix_web::Result<HttpResponse> {
-    match fs::metadata(&file.as_str()) {
+    match fs::metadata(file.as_str()) {
         Ok(metadata) => match metadata.modified() {
             Ok(modified_time) => {
                 let timestamp = modified_time
