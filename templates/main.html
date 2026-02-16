@@ -3,7 +3,15 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.1/css/all.min.css"
+      integrity="sha512-2SwdPD6INVrV/lHTZbO2nodKhrnDdJK9/kg2XD1r9uGqPo1cUbujc+IYdlYdEErWNu69gVcYgdxlmVmzTWnetw=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
     <title>{{ title }} - mdwatch</title>
+
     <style>
       :root {
         --bg-color: #0d1117;
@@ -381,23 +389,32 @@
   </head>
   <body>
     <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">
-      🌙
+      <i class="fa-solid fa-moon"></i>
     </button>
     <article id="content">{{content | safe}}</article>
 
     <script>
+      function setThemeIcon(theme) {
+        const button = document.querySelector(".theme-toggle");
+        if (!button) return;
+        button.innerHTML =
+          theme === "light"
+            ? '<i class="fa-regular fa-sun"></i>'
+            : '<i class="fa-solid fa-moon"></i>';
+      }
+
       function toggleTheme() {
         const html = document.documentElement;
-        const button = document.querySelector(".theme-toggle");
+        const isLight = html.getAttribute("data-theme") === "light";
 
-        if (html.getAttribute("data-theme") === "light") {
+        if (isLight) {
           html.removeAttribute("data-theme");
-          button.textContent = "🌙";
           localStorage.setItem("theme", "dark");
+          setThemeIcon("dark");
         } else {
           html.setAttribute("data-theme", "light");
-          button.textContent = "☀️";
           localStorage.setItem("theme", "light");
+          setThemeIcon("light");
         }
       }
 
@@ -405,13 +422,12 @@
       document.addEventListener("DOMContentLoaded", function () {
         const savedTheme = localStorage.getItem("theme");
         const html = document.documentElement;
-        const button = document.querySelector(".theme-toggle");
 
         if (savedTheme === "light") {
           html.setAttribute("data-theme", "light");
-          button.textContent = "☀️";
+          setThemeIcon("light");
         } else {
-          button.textContent = "🌙";
+          setThemeIcon("dark");
         }
       });
 
