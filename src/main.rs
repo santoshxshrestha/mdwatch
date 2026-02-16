@@ -1,11 +1,9 @@
-mod template;
 use actix_web::web;
 use pulldown_cmark::Options;
 use std::fs;
 use std::path::Path;
 use std::sync::atomic::AtomicU64;
 use std::time::UNIX_EPOCH;
-use template::Home;
 mod args;
 use actix_web::App;
 use actix_web::HttpResponse;
@@ -16,22 +14,42 @@ use args::MdwatchArgs;
 use askama::Template;
 use clap::Parser;
 use std::sync::Arc;
-use std::sync::Mutex;
 use std::sync::atomic::Ordering;
+
+#[derive(Template)]
+#[template(path = "main.html")]
+pub struct Mdwatch {
+    pub content: String,
+    pub last_modified: u64,
+    pub title: String,
+}
 
 #[get("/")]
 async fn home(
     file: web::Data<String>,
     last_modified: web::Data<Arc<AtomicU64>>,
 ) -> actix_web::Result<HttpResponse> {
-    let file_path = file.as_str();
-    let file = match Path::new(&file_path).file_name() {
+    let file_path = Path::new(file.as_str());
+
+    let file_name = match file_path.file_name() {
         Some(name) => name,
         None => {
             return Err(actix_web::error::ErrorInternalServerError(
                 "Failed to get file name",
             ));
         }
+    };
+
+    if let Some(extension) = file_path.extension()
+        && extension != "md"
+    {
+        eprintln!(
+            "Warning: Unsupported file type: .{}",
+            extension.to_string_lossy()
+        );
+        return Err(actix_web::error::ErrorInternalServerError(
+            "Unsupported file type. Please provide a markdown (.md) file.",
+        ));
     };
 
     let markdown_input: String =
@@ -43,10 +61,10 @@ async fn home(
     pulldown_cmark::html::push_html(&mut html_output, parser);
     html_output = clean(&html_output);
 
-    let template = Home {
+    let template = Mdwatch {
         content: html_output,
         last_modified: last_modified.load(Ordering::SeqCst),
-        title: file.to_string_lossy().to_string(),
+        title: file_name.to_string_lossy().to_string(),
     };
 
     match template.render() {
@@ -62,15 +80,8 @@ async fn home(
 }
 
 #[get("/api/check-update")]
-async fn check_update(file: web::Data<Arc<Mutex<String>>>) -> actix_web::Result<HttpResponse> {
-    let locked_file = match file.lock() {
-        Ok(guard) => guard,
-        Err(poisoned) => poisoned.into_inner(),
-    };
-
-    let file_path = locked_file.clone();
-
-    match fs::metadata(&file_path) {
+async fn check_update(file: web::Data<String>) -> actix_web::Result<HttpResponse> {
+    match fs::metadata(file.as_str()) {
         Ok(metadata) => match metadata.modified() {
             Ok(modified_time) => {
                 let timestamp = modified_time
@@ -109,7 +120,7 @@ async fn main() -> std::io::Result<()> {
     let MdwatchArgs { file, ip, port } = args;
 
     if ip == "0.0.0.0" {
-        eprintln!("⚠️ Warning: Binding to 0.0.0.0 exposes your server to the entire network!");
+        eprintln!("  Warning: Binding to 0.0.0.0 exposes your server to the entire network!");
         eprintln!("         Make sure you trust your network or firewall settings.");
     }
 

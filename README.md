@@ -30,12 +30,6 @@ cargo install mdwatch
 This is the most "Rusty" and portable way.  
 It automatically downloads, compiles, and installs the latest version to your `$HOME/.cargo/bin`.
 
-> If you want even faster installs with prebuilt binaries, check out [cargo-binstall](https://github.com/cargo-bins/cargo-binstall):
-
-```bash
-cargo binstall mdwatch
-```
-
 ---
 
 ### 2. Quick Install via Script
