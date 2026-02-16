@@ -14,7 +14,6 @@ use args::MdwatchArgs;
 use askama::Template;
 use clap::Parser;
 use std::sync::Arc;
-use std::sync::Mutex;
 use std::sync::atomic::Ordering;
 
 #[derive(Template)]
@@ -81,15 +80,8 @@ async fn home(
 }
 
 #[get("/api/check-update")]
-async fn check_update(file: web::Data<Arc<Mutex<String>>>) -> actix_web::Result<HttpResponse> {
-    let locked_file = match file.lock() {
-        Ok(guard) => guard,
-        Err(poisoned) => poisoned.into_inner(),
-    };
-
-    let file_path = locked_file.clone();
-
-    match fs::metadata(&file_path) {
+async fn check_update(file: web::Data<String>) -> actix_web::Result<HttpResponse> {
+    match fs::metadata(&file.as_str()) {
         Ok(metadata) => match metadata.modified() {
             Ok(modified_time) => {
                 let timestamp = modified_time
@@ -128,7 +120,7 @@ async fn main() -> std::io::Result<()> {
     let MdwatchArgs { file, ip, port } = args;
 
     if ip == "0.0.0.0" {
-        eprintln!("⚠️ Warning: Binding to 0.0.0.0 exposes your server to the entire network!");
+        eprintln!("  Warning: Binding to 0.0.0.0 exposes your server to the entire network!");
         eprintln!("         Make sure you trust your network or firewall settings.");
     }
 
