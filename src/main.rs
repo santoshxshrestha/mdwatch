@@ -41,16 +41,16 @@ async fn home(
         }
     };
 
-    if let Some(extension) = file_path.extension() {
-        if extension != "md" {
-            eprintln!(
-                "Warning: Unsupported file type: .{}",
-                extension.to_string_lossy()
-            );
-            return Err(actix_web::error::ErrorInternalServerError(
-                "Unsupported file type. Please provide a markdown (.md) file.",
-            ));
-        }
+    if let Some(extension) = file_path.extension()
+        && extension != "md"
+    {
+        eprintln!(
+            "Warning: Unsupported file type: .{}",
+            extension.to_string_lossy()
+        );
+        return Err(actix_web::error::ErrorInternalServerError(
+            "Unsupported file type. Please provide a markdown (.md) file.",
+        ));
     };
 
     let markdown_input: String =
