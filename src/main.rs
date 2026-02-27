@@ -1,4 +1,5 @@
 use actix_web::web;
+use actix_ws::Message;
 use pulldown_cmark::Options;
 use std::fs;
 use std::path::Path;
@@ -6,9 +7,11 @@ use std::sync::atomic::AtomicU64;
 use std::time::UNIX_EPOCH;
 mod args;
 use actix_web::App;
-use actix_web::HttpResponse;
 use actix_web::HttpServer;
+use actix_web::Responder;
 use actix_web::get;
+use actix_web::{HttpRequest, HttpResponse};
+use actix_ws;
 use ammonia::clean;
 use args::MdwatchArgs;
 use askama::Template;
@@ -16,12 +19,36 @@ use clap::Parser;
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
 
+async fn ws_handler(req: HttpRequest, body: web::Payload) -> actix_web::Result<impl Responder> {
+    let (response, mut session, mut msg_stream) = actix_ws::handle(&req, body)?;
+
+    actix_web::rt::spawn(async move {
+        if session.text("Hello from server").await.is_err() {
+            return;
+        }
+        while let Some(Ok(msg)) = msg_stream.recv().await {
+            match msg {
+                Message::Ping(bytes) => {
+                    if session.pong(&bytes).await.is_err() {
+                        return;
+                    }
+                }
+                Message::Text(msg) => println!("Got text: {msg}"),
+                _ => break,
+            }
+        }
+        let _ = session.close(None).await;
+    });
+    Ok(response)
+}
+
 #[derive(Template)]
 #[template(path = "main.html")]
 pub struct Mdwatch {
     pub content: String,
     pub last_modified: u64,
     pub title: String,
+
 }
 
 #[get("/")]
@@ -135,6 +162,7 @@ async fn main() -> std::io::Result<()> {
 
     HttpServer::new(move || {
         App::new()
+            .route("/ws", web::get().to(ws_handler))
             .service(home)
             .service(check_update)
             .app_data(web::Data::new(last_modified_clone.clone()))

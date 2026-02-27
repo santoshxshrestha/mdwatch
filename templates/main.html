@@ -457,6 +457,21 @@
           }
         }
       });
+
+      const proto = location.protocol === "https:" ? "wss" : "ws";
+      const ws = new WebSocket(`${proto}://${location.host}/ws`);
+
+      ws.onopen = () => {
+        console.log("connected");
+        ws.send("Hello from client!");
+      };
+
+      ws.onmessage = (event) => {
+        console.log("server: " + event.data);
+      };
+
+      ws.onclose = () => console.log("closed");
+      ws.onerror = (e) => console.log("error");
     </script>
   </body>
 </html>
