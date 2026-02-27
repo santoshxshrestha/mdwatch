@@ -19,26 +19,64 @@ use clap::Parser;
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
 
-async fn ws_handler(req: HttpRequest, body: web::Payload) -> actix_web::Result<impl Responder> {
-    let (response, mut session, mut msg_stream) = actix_ws::handle(&req, body)?;
+use notify::{Event, RecursiveMode, Result, Watcher};
+use tokio::sync::mpsc;
+
+async fn ws_handler(
+    req: HttpRequest,
+    body: web::Payload,
+    file: web::Data<String>,
+) -> actix_web::Result<impl Responder> {
+    let (response, mut session, mut _msg_stream) = actix_ws::handle(&req, body)?;
+    let file_path = file.as_str().to_string();
+    let (watch_tx, mut notify_rx) = mpsc::unbounded_channel::<Result<Event>>();
+
+    let mut watcher = notify::recommended_watcher(move |res| {
+        let _ = watch_tx.send(res);
+    })
+    .map_err(actix_web::error::ErrorInternalServerError)?;
+
+    watcher
+        .watch(Path::new(&file_path), RecursiveMode::NonRecursive)
+        .map_err(actix_web::error::ErrorInternalServerError)?;
 
     actix_web::rt::spawn(async move {
-        if session.text("Hello from server").await.is_err() {
-            return;
-        }
-        while let Some(Ok(msg)) = msg_stream.recv().await {
-            match msg {
-                Message::Ping(bytes) => {
-                    if session.pong(&bytes).await.is_err() {
-                        return;
+        let _watcher = watcher;
+
+        while let Some(res) = notify_rx.recv().await {
+            match res {
+                Ok(event) => {
+                    if event.kind.is_modify() {
+                        if session.text("reload").await.is_err() {
+                            break;
+                        }
                     }
                 }
-                Message::Text(msg) => println!("Got text: {msg}"),
-                _ => break,
+                Err(e) => eprintln!("watch error: {e:?}"),
             }
         }
+
         let _ = session.close(None).await;
     });
+
+    // actix_web::rt::spawn(async move {
+    //     if session.text("Hello from server").await.is_err() {
+    //         return;
+    //     }
+    //
+    //     while let Some(Ok(msg)) = msg_stream.recv().await {
+    //         match msg {
+    //             Message::Ping(bytes) => {
+    //                 if session.pong(&bytes).await.is_err() {
+    //                     return;
+    //                 }
+    //             }
+    //             Message::Text(msg) => println!("Got text: {msg}"),
+    //             _ => break,
+    //         }
+    //     }
+    // let _ = session.close(None).await;
+    // });
     Ok(response)
 }
 
@@ -48,7 +86,6 @@ pub struct Mdwatch {
     pub content: String,
     pub last_modified: u64,
     pub title: String,
-
 }
 
 #[get("/")]

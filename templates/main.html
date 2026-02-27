@@ -431,18 +431,18 @@
         }
       });
 
-      let lastSeen = Number(sessionStorage.getItem("lastSeen") || 0);
-
-      setInterval(() => {
-        fetch("/api/check-update")
-          .then((res) => res.json())
-          .then((data) => {
-            if (data.last_modified > lastSeen) {
-              sessionStorage.setItem("lastSeen", data.last_modified);
-              location.reload();
-            }
-          });
-      }, 1000);
+      // let lastSeen = Number(sessionStorage.getItem("lastSeen") || 0);
+      //
+      // setInterval(() => {
+      //   fetch("/api/check-update")
+      //     .then((res) => res.json())
+      //     .then((data) => {
+      //       if (data.last_modified > lastSeen) {
+      //         sessionStorage.setItem("lastSeen", data.last_modified);
+      //         location.reload();
+      //       }
+      //     });
+      // }, 1000);
 
       // Add smooth scrolling for anchor links
       document.addEventListener("click", function (e) {
@@ -463,11 +463,15 @@
 
       ws.onopen = () => {
         console.log("connected");
-        ws.send("Hello from client!");
+        // ws.send("Hello from client!");
       };
 
       ws.onmessage = (event) => {
         console.log("server: " + event.data);
+        if (event.data === "reload") {
+          console.log("log: changes detected, reloading...");
+          location.reload();
+        }
       };
 
       ws.onclose = () => console.log("closed");
