@@ -57,9 +57,10 @@ ws.onopen = () => {
 };
 
 ws.onmessage = (event) => {
-  console.log("server: here is your new data");
+  const date = new Date();
+  console.log(`updating content: ${date.toLocaleTimeString()}`);
   content.innerHTML = event.data;
 };
 
 ws.onclose = () => console.log("closed");
-ws.onerror = (e) => console.log("error");
+ws.onerror = () => console.log("error");
