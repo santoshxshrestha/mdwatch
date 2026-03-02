@@ -7,6 +7,26 @@ function setThemeIcon(theme) {
       : '<i class="fa-solid fa-moon"></i>';
 }
 
+function highlightBlocks(root = document) {
+  if (!window.hljs) return;
+  root.querySelectorAll("pre code").forEach((block) => {
+    hljs.highlightElement(block);
+  });
+}
+
+function syncHighlightTheme(theme) {
+  const dark = document.getElementById("hljs-theme-dark");
+  const light = document.getElementById("hljs-theme-light");
+  if (!dark || !light) return;
+  if (theme === "light") {
+    dark.disabled = true;
+    light.disabled = false;
+  } else {
+    dark.disabled = false;
+    light.disabled = true;
+  }
+}
+
 function toggleTheme() {
   const html = document.documentElement;
   const isLight = html.getAttribute("data-theme") === "light";
@@ -15,10 +35,12 @@ function toggleTheme() {
     html.removeAttribute("data-theme");
     localStorage.setItem("theme", "dark");
     setThemeIcon("dark");
+    syncHighlightTheme("dark");
   } else {
     html.setAttribute("data-theme", "light");
     localStorage.setItem("theme", "light");
     setThemeIcon("light");
+    syncHighlightTheme("light");
   }
 }
 
@@ -30,9 +52,13 @@ document.addEventListener("DOMContentLoaded", function () {
   if (savedTheme === "light") {
     html.setAttribute("data-theme", "light");
     setThemeIcon("light");
+    syncHighlightTheme("light");
   } else {
     setThemeIcon("dark");
+    syncHighlightTheme("dark");
   }
+
+  highlightBlocks();
 });
 
 // Add smooth scrolling for anchor links
@@ -60,6 +86,7 @@ ws.onmessage = (event) => {
   const date = new Date();
   console.log(`updating content: ${date.toLocaleTimeString()}`);
   content.innerHTML = event.data;
+  highlightBlocks(content);
 };
 
 ws.onclose = () => console.log("closed");

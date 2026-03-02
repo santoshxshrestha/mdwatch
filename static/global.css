@@ -133,7 +133,7 @@ code {
 
 pre {
   background: var(--code-bg);
-  padding: 16px;
+  padding: 2px;
   overflow: auto;
   border-radius: 6px;
   color: var(--code-color);
