@@ -75,6 +75,7 @@ async fn ws_handler(
         .map_err(actix_web::error::ErrorInternalServerError)?;
 
     actix_web::rt::spawn(async move {
+        // Keep the watcher alive in this async task to keep the msg_stream alive
         let _watcher = watcher;
         while let Some(res) = notify_rx.recv().await {
             match res {
