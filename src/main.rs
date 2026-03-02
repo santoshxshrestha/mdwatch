@@ -2,6 +2,8 @@ use actix_web::web;
 use pulldown_cmark::Options;
 use std::fs;
 use std::path::Path;
+use std::time::Duration;
+use tokio::time::sleep;
 mod args;
 use actix_web::App;
 use actix_web::HttpServer;
@@ -36,11 +38,13 @@ async fn ws_handler(
         .map_err(actix_web::error::ErrorInternalServerError)?;
 
     actix_web::rt::spawn(async move {
-        let _watcher = watcher;
-
         while let Some(res) = notify_rx.recv().await {
             match res {
                 Ok(event) => {
+                    if event.kind.is_remove() {
+                        eprintln!("File removed: {}", file_path);
+                        break;
+                    }
                     if event.kind.is_modify() {
                         let latest_markdown = match get_markdown(&file_path) {
                             Ok(md) => md,
