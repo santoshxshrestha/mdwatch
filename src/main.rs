@@ -1,10 +1,7 @@
 use actix_web::web;
-use actix_ws::Message;
 use pulldown_cmark::Options;
 use std::fs;
 use std::path::Path;
-use std::sync::atomic::AtomicU64;
-use std::time::UNIX_EPOCH;
 mod args;
 use actix_web::App;
 use actix_web::HttpServer;
@@ -16,8 +13,6 @@ use ammonia::clean;
 use args::MdwatchArgs;
 use askama::Template;
 use clap::Parser;
-use std::sync::Arc;
-use std::sync::atomic::Ordering;
 
 use notify::{Event, RecursiveMode, Result, Watcher};
 use tokio::sync::mpsc;
@@ -47,7 +42,14 @@ async fn ws_handler(
             match res {
                 Ok(event) => {
                     if event.kind.is_modify() {
-                        if session.text("reload").await.is_err() {
+                        let latest_markdown = match get_markdown(&file_path) {
+                            Ok(md) => md,
+                            Err(e) => {
+                                eprintln!("Error reading markdown file: {e}");
+                                continue;
+                            }
+                        };
+                        if session.text(latest_markdown).await.is_err() {
                             break;
                         }
                     }
@@ -59,40 +61,29 @@ async fn ws_handler(
         let _ = session.close(None).await;
     });
 
-    // actix_web::rt::spawn(async move {
-    //     if session.text("Hello from server").await.is_err() {
-    //         return;
-    //     }
-    //
-    //     while let Some(Ok(msg)) = msg_stream.recv().await {
-    //         match msg {
-    //             Message::Ping(bytes) => {
-    //                 if session.pong(&bytes).await.is_err() {
-    //                     return;
-    //                 }
-    //             }
-    //             Message::Text(msg) => println!("Got text: {msg}"),
-    //             _ => break,
-    //         }
-    //     }
-    // let _ = session.close(None).await;
-    // });
     Ok(response)
+}
+
+pub fn get_markdown(file_path: &String) -> std::io::Result<String> {
+    let markdown_input: String = fs::read_to_string(file_path)?;
+    let options = Options::all();
+    let parser = pulldown_cmark::Parser::new_ext(&markdown_input, options);
+
+    let mut html_output = String::new();
+    pulldown_cmark::html::push_html(&mut html_output, parser);
+    html_output = clean(&html_output);
+    Ok(html_output)
 }
 
 #[derive(Template)]
 #[template(path = "main.html")]
 pub struct Mdwatch {
     pub content: String,
-    pub last_modified: u64,
     pub title: String,
 }
 
 #[get("/")]
-async fn home(
-    file: web::Data<String>,
-    last_modified: web::Data<Arc<AtomicU64>>,
-) -> actix_web::Result<HttpResponse> {
+async fn home(file: web::Data<String>) -> actix_web::Result<HttpResponse> {
     let file_path = Path::new(file.as_str());
 
     let file_name = match file_path.file_name() {
@@ -116,18 +107,18 @@ async fn home(
         ));
     };
 
-    let markdown_input: String =
-        fs::read_to_string(file_path).map_err(actix_web::error::ErrorInternalServerError)?;
-    let options = Options::all();
-    let parser = pulldown_cmark::Parser::new_ext(&markdown_input, options);
-
-    let mut html_output = String::new();
-    pulldown_cmark::html::push_html(&mut html_output, parser);
-    html_output = clean(&html_output);
+    let html_output = match get_markdown(&file.as_str().to_string()) {
+        Ok(html) => html,
+        Err(e) => {
+            eprintln!("Error processing markdown file: {e}");
+            return Err(actix_web::error::ErrorInternalServerError(
+                "Failed to process markdown file",
+            ));
+        }
+    };
 
     let template = Mdwatch {
         content: html_output,
-        last_modified: last_modified.load(Ordering::SeqCst),
         title: file_name.to_string_lossy().to_string(),
     };
 
@@ -143,43 +134,42 @@ async fn home(
     }
 }
 
-#[get("/api/check-update")]
-async fn check_update(file: web::Data<String>) -> actix_web::Result<HttpResponse> {
-    match fs::metadata(file.as_str()) {
-        Ok(metadata) => match metadata.modified() {
-            Ok(modified_time) => {
-                let timestamp = modified_time
-                    .duration_since(UNIX_EPOCH)
-                    .map_err(|_| {
-                        eprintln!("Warning: System time is before UNIX epoch");
-                        actix_web::error::ErrorInternalServerError("Invalid system time")
-                    })?
-                    .as_secs();
-
-                Ok(HttpResponse::Ok().json(serde_json::json!({
-                    "last_modified": timestamp
-                })))
-            }
-            Err(e) => {
-                eprintln!("Error: Failed to get modification time: {e}");
-                Ok(HttpResponse::InternalServerError().json(serde_json::json!({
-                    "error": "Failed to read file modification time"
-                })))
-            }
-        },
-        Err(e) => {
-            eprintln!("Warning: File not found or inaccessible: {e}");
-            Ok(HttpResponse::Ok().json(serde_json::json!({
-                "last_modified": 0
-            })))
-        }
-    }
-}
+// #[get("/api/check-update")]
+// async fn check_update(file: web::Data<String>) -> actix_web::Result<HttpResponse> {
+//     match fs::metadata(file.as_str()) {
+//         Ok(metadata) => match metadata.modified() {
+//             Ok(modified_time) => {
+//                 let timestamp = modified_time
+//                     .duration_since(UNIX_EPOCH)
+//                     .map_err(|_| {
+//                         eprintln!("Warning: System time is before UNIX epoch");
+//                         actix_web::error::ErrorInternalServerError("Invalid system time")
+//                     })?
+//                     .as_secs();
+//
+//                 Ok(HttpResponse::Ok().json(serde_json::json!({
+//                     "last_modified": timestamp
+//                 })))
+//             }
+//             Err(e) => {
+//                 eprintln!("Error: Failed to get modification time: {e}");
+//                 Ok(HttpResponse::InternalServerError().json(serde_json::json!({
+//                     "error": "Failed to read file modification time"
+//                 })))
+//             }
+//         },
+//         Err(e) => {
+//             eprintln!("Warning: File not found or inaccessible: {e}");
+//             Ok(HttpResponse::Ok().json(serde_json::json!({
+//                 "last_modified": 0
+//             })))
+//         }
+//     }
+// }
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     let args = MdwatchArgs::parse();
-    let last_modified = Arc::new(AtomicU64::new(0));
 
     let MdwatchArgs { file, ip, port } = args;
 
@@ -195,14 +185,12 @@ async fn main() -> std::io::Result<()> {
         eprintln!("Failed to open browser: {e}");
     }
 
-    let last_modified_clone = last_modified.clone();
-
     HttpServer::new(move || {
         App::new()
             .route("/ws", web::get().to(ws_handler))
             .service(home)
-            .service(check_update)
-            .app_data(web::Data::new(last_modified_clone.clone()))
+            // .service(check_update)
+            // .app_data(web::Data::new(last_modified_clone.clone()))
             .app_data(web::Data::new(file.clone()))
     })
     .bind(format!("{}:{}", ip, port))?

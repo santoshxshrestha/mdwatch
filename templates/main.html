@@ -466,12 +466,16 @@
         // ws.send("Hello from client!");
       };
 
+      // ws.onmessage = (event) => {
+      //   console.log("server: " + event.data);
+      //   if (event.data === "reload") {
+      //     console.log("log: changes detected, reloading...");
+      //     location.reload();
+      //   }
+      // };
       ws.onmessage = (event) => {
-        console.log("server: " + event.data);
-        if (event.data === "reload") {
-          console.log("log: changes detected, reloading...");
-          location.reload();
-        }
+        console.log("server: here is your new data");
+        content.innerHTML = event.data;
       };
 
       ws.onclose = () => console.log("closed");
