@@ -2,33 +2,133 @@ use actix_web::web;
 use pulldown_cmark::Options;
 use std::fs;
 use std::path::Path;
-use std::sync::atomic::AtomicU64;
-use std::time::UNIX_EPOCH;
 mod args;
 use actix_web::App;
-use actix_web::HttpResponse;
 use actix_web::HttpServer;
+use actix_web::Responder;
 use actix_web::get;
+use actix_web::{HttpRequest, HttpResponse};
 use ammonia::clean;
 use args::MdwatchArgs;
 use askama::Template;
 use clap::Parser;
-use std::sync::Arc;
-use std::sync::atomic::Ordering;
+
+use notify::{Event, RecursiveMode, Result, Watcher};
+use rust_embed::Embed;
+use tokio::sync::mpsc;
+
+#[derive(Embed)]
+#[folder = "$CARGO_MANIFEST_DIR/static"]
+#[prefix = "static/"]
+struct Static;
+
+impl Static {
+    fn get_styles() -> String {
+        match Static::get("static/global.css") {
+            Some(file) => match std::str::from_utf8(&file.data) {
+                Ok(css) => css.to_string(),
+                Err(e) => {
+                    eprintln!("Failed to read CSS file: {e}");
+                    String::new()
+                }
+            },
+            None => {
+                eprintln!("CSS file not found in embedded assets.");
+                String::new()
+            }
+        }
+    }
+
+    fn get_scripts() -> String {
+        match Static::get("static/client.js") {
+            Some(file) => match std::str::from_utf8(&file.data) {
+                Ok(js) => js.to_string(),
+                Err(e) => {
+                    eprintln!("Failed to read JS file: {e}");
+                    String::new()
+                }
+            },
+            None => {
+                eprintln!("JS file not found in embedded assets.");
+                String::new()
+            }
+        }
+    }
+}
+
+async fn ws_handler(
+    req: HttpRequest,
+    body: web::Payload,
+    file: web::Data<String>,
+) -> actix_web::Result<impl Responder> {
+    let (response, mut session, mut _msg_stream) = actix_ws::handle(&req, body)?;
+    let file_path = file.as_str().to_string();
+    let (watch_tx, mut notify_rx) = mpsc::unbounded_channel::<Result<Event>>();
+
+    let mut watcher = notify::recommended_watcher(move |res| {
+        let _ = watch_tx.send(res);
+    })
+    .map_err(actix_web::error::ErrorInternalServerError)?;
+
+    watcher
+        .watch(Path::new(&file_path), RecursiveMode::NonRecursive)
+        .map_err(actix_web::error::ErrorInternalServerError)?;
+
+    actix_web::rt::spawn(async move {
+        // Keep the watcher alive in this async task to keep the msg_stream alive
+        let _watcher = watcher;
+        while let Some(res) = notify_rx.recv().await {
+            match res {
+                Ok(event) => {
+                    if event.kind.is_remove() {
+                        eprintln!("File removed: {}", file_path);
+                        break;
+                    }
+                    if event.kind.is_modify() {
+                        let latest_markdown = match get_markdown(&file_path) {
+                            Ok(md) => md,
+                            Err(e) => {
+                                eprintln!("Error reading markdown file: {e}");
+                                continue;
+                            }
+                        };
+                        if session.text(latest_markdown).await.is_err() {
+                            break;
+                        }
+                    }
+                }
+                Err(e) => eprintln!("watch error: {e:?}"),
+            }
+        }
+
+        let _ = session.close(None).await;
+    });
+
+    Ok(response)
+}
+
+pub fn get_markdown(file_path: &String) -> std::io::Result<String> {
+    let markdown_input: String = fs::read_to_string(file_path)?;
+    let options = Options::all();
+    let parser = pulldown_cmark::Parser::new_ext(&markdown_input, options);
+
+    let mut html_output = String::new();
+    pulldown_cmark::html::push_html(&mut html_output, parser);
+    html_output = clean(&html_output);
+    Ok(html_output)
+}
 
 #[derive(Template)]
 #[template(path = "main.html")]
 pub struct Mdwatch {
     pub content: String,
-    pub last_modified: u64,
     pub title: String,
+    pub style: String,
+    pub script: String,
 }
 
 #[get("/")]
-async fn home(
-    file: web::Data<String>,
-    last_modified: web::Data<Arc<AtomicU64>>,
-) -> actix_web::Result<HttpResponse> {
+async fn home(file: web::Data<String>) -> actix_web::Result<HttpResponse> {
     let file_path = Path::new(file.as_str());
 
     let file_name = match file_path.file_name() {
@@ -52,19 +152,21 @@ async fn home(
         ));
     };
 
-    let markdown_input: String =
-        fs::read_to_string(file_path).map_err(actix_web::error::ErrorInternalServerError)?;
-    let options = Options::all();
-    let parser = pulldown_cmark::Parser::new_ext(&markdown_input, options);
-
-    let mut html_output = String::new();
-    pulldown_cmark::html::push_html(&mut html_output, parser);
-    html_output = clean(&html_output);
+    let html_output = match get_markdown(&file.as_str().to_string()) {
+        Ok(html) => html,
+        Err(e) => {
+            eprintln!("Error processing markdown file: {e}");
+            return Err(actix_web::error::ErrorInternalServerError(
+                "Failed to process markdown file",
+            ));
+        }
+    };
 
     let template = Mdwatch {
         content: html_output,
-        last_modified: last_modified.load(Ordering::SeqCst),
         title: file_name.to_string_lossy().to_string(),
+        style: Static::get_styles(),
+        script: Static::get_scripts(),
     };
 
     match template.render() {
@@ -79,43 +181,9 @@ async fn home(
     }
 }
 
-#[get("/api/check-update")]
-async fn check_update(file: web::Data<String>) -> actix_web::Result<HttpResponse> {
-    match fs::metadata(file.as_str()) {
-        Ok(metadata) => match metadata.modified() {
-            Ok(modified_time) => {
-                let timestamp = modified_time
-                    .duration_since(UNIX_EPOCH)
-                    .map_err(|_| {
-                        eprintln!("Warning: System time is before UNIX epoch");
-                        actix_web::error::ErrorInternalServerError("Invalid system time")
-                    })?
-                    .as_secs();
-
-                Ok(HttpResponse::Ok().json(serde_json::json!({
-                    "last_modified": timestamp
-                })))
-            }
-            Err(e) => {
-                eprintln!("Error: Failed to get modification time: {e}");
-                Ok(HttpResponse::InternalServerError().json(serde_json::json!({
-                    "error": "Failed to read file modification time"
-                })))
-            }
-        },
-        Err(e) => {
-            eprintln!("Warning: File not found or inaccessible: {e}");
-            Ok(HttpResponse::Ok().json(serde_json::json!({
-                "last_modified": 0
-            })))
-        }
-    }
-}
-
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     let args = MdwatchArgs::parse();
-    let last_modified = Arc::new(AtomicU64::new(0));
 
     let MdwatchArgs { file, ip, port } = args;
 
@@ -131,13 +199,10 @@ async fn main() -> std::io::Result<()> {
         eprintln!("Failed to open browser: {e}");
     }
 
-    let last_modified_clone = last_modified.clone();
-
     HttpServer::new(move || {
         App::new()
+            .route("/ws", web::get().to(ws_handler))
             .service(home)
-            .service(check_update)
-            .app_data(web::Data::new(last_modified_clone.clone()))
             .app_data(web::Data::new(file.clone()))
     })
     .bind(format!("{}:{}", ip, port))?
