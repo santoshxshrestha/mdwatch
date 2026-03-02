@@ -22,6 +22,40 @@ use tokio::sync::mpsc;
 #[prefix = "static/"]
 struct Static;
 
+impl Static {
+    fn get_styles() -> String {
+        match Static::get("static/global.css") {
+            Some(file) => match std::str::from_utf8(&file.data) {
+                Ok(css) => css.to_string(),
+                Err(e) => {
+                    eprintln!("Failed to read CSS file: {e}");
+                    String::new()
+                }
+            },
+            None => {
+                eprintln!("CSS file not found in embedded assets.");
+                String::new()
+            }
+        }
+    }
+
+    fn get_scripts() -> String {
+        match Static::get("static/client.js") {
+            Some(file) => match std::str::from_utf8(&file.data) {
+                Ok(js) => js.to_string(),
+                Err(e) => {
+                    eprintln!("Failed to read JS file: {e}");
+                    String::new()
+                }
+            },
+            None => {
+                eprintln!("JS file not found in embedded assets.");
+                String::new()
+            }
+        }
+    }
+}
+
 async fn ws_handler(
     req: HttpRequest,
     body: web::Payload,
@@ -129,8 +163,8 @@ async fn home(file: web::Data<String>) -> actix_web::Result<HttpResponse> {
     let template = Mdwatch {
         content: html_output,
         title: file_name.to_string_lossy().to_string(),
-        style: get_styles(),
-        script: get_scripts(),
+        style: Static::get_styles(),
+        script: Static::get_scripts(),
     };
 
     match template.render() {
@@ -141,38 +175,6 @@ async fn home(file: web::Data<String>) -> actix_web::Result<HttpResponse> {
             Ok(HttpResponse::InternalServerError()
                 .content_type("text/plain")
                 .body("Failed to render template"))
-        }
-    }
-}
-
-fn get_styles() -> String {
-    match Static::get("static/global.css") {
-        Some(file) => match std::str::from_utf8(&file.data) {
-            Ok(css) => css.to_string(),
-            Err(e) => {
-                eprintln!("Failed to read CSS file: {e}");
-                String::new()
-            }
-        },
-        None => {
-            eprintln!("CSS file not found in embedded assets.");
-            String::new()
-        }
-    }
-}
-
-fn get_scripts() -> String {
-    match Static::get("static/client.js") {
-        Some(file) => match std::str::from_utf8(&file.data) {
-            Ok(js) => js.to_string(),
-            Err(e) => {
-                eprintln!("Failed to read JS file: {e}");
-                String::new()
-            }
-        },
-        None => {
-            eprintln!("JS file not found in embedded assets.");
-            String::new()
         }
     }
 }
