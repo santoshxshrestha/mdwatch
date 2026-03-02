@@ -2,8 +2,6 @@ use actix_web::web;
 use pulldown_cmark::Options;
 use std::fs;
 use std::path::Path;
-use std::time::Duration;
-use tokio::time::sleep;
 mod args;
 use actix_web::App;
 use actix_web::HttpServer;
@@ -17,7 +15,13 @@ use askama::Template;
 use clap::Parser;
 
 use notify::{Event, RecursiveMode, Result, Watcher};
+use rust_embed::Embed;
 use tokio::sync::mpsc;
+
+#[derive(Embed)]
+#[folder = "$CARGO_MANIFEST_DIR/static"]
+#[prefix = "static/"]
+struct Assets;
 
 async fn ws_handler(
     req: HttpRequest,
@@ -84,6 +88,7 @@ pub fn get_markdown(file_path: &String) -> std::io::Result<String> {
 pub struct Mdwatch {
     pub content: String,
     pub title: String,
+    pub style: String,
 }
 
 #[get("/")]
@@ -124,6 +129,7 @@ async fn home(file: web::Data<String>) -> actix_web::Result<HttpResponse> {
     let template = Mdwatch {
         content: html_output,
         title: file_name.to_string_lossy().to_string(),
+        style: get_styles(),
     };
 
     match template.render() {
@@ -134,6 +140,22 @@ async fn home(file: web::Data<String>) -> actix_web::Result<HttpResponse> {
             Ok(HttpResponse::InternalServerError()
                 .content_type("text/plain")
                 .body("Failed to render template"))
+        }
+    }
+}
+
+fn get_styles() -> String {
+    match Assets::get("static/global.css") {
+        Some(file) => match std::str::from_utf8(&file.data) {
+            Ok(css) => css.to_string(),
+            Err(e) => {
+                eprintln!("Failed to read CSS file: {e}");
+                String::new()
+            }
+        },
+        None => {
+            eprintln!("CSS file not found in embedded assets.");
+            String::new()
         }
     }
 }
