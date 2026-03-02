@@ -134,39 +134,6 @@ async fn home(file: web::Data<String>) -> actix_web::Result<HttpResponse> {
     }
 }
 
-// #[get("/api/check-update")]
-// async fn check_update(file: web::Data<String>) -> actix_web::Result<HttpResponse> {
-//     match fs::metadata(file.as_str()) {
-//         Ok(metadata) => match metadata.modified() {
-//             Ok(modified_time) => {
-//                 let timestamp = modified_time
-//                     .duration_since(UNIX_EPOCH)
-//                     .map_err(|_| {
-//                         eprintln!("Warning: System time is before UNIX epoch");
-//                         actix_web::error::ErrorInternalServerError("Invalid system time")
-//                     })?
-//                     .as_secs();
-//
-//                 Ok(HttpResponse::Ok().json(serde_json::json!({
-//                     "last_modified": timestamp
-//                 })))
-//             }
-//             Err(e) => {
-//                 eprintln!("Error: Failed to get modification time: {e}");
-//                 Ok(HttpResponse::InternalServerError().json(serde_json::json!({
-//                     "error": "Failed to read file modification time"
-//                 })))
-//             }
-//         },
-//         Err(e) => {
-//             eprintln!("Warning: File not found or inaccessible: {e}");
-//             Ok(HttpResponse::Ok().json(serde_json::json!({
-//                 "last_modified": 0
-//             })))
-//         }
-//     }
-// }
-
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     let args = MdwatchArgs::parse();
@@ -189,8 +156,6 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .route("/ws", web::get().to(ws_handler))
             .service(home)
-            // .service(check_update)
-            // .app_data(web::Data::new(last_modified_clone.clone()))
             .app_data(web::Data::new(file.clone()))
     })
     .bind(format!("{}:{}", ip, port))?
