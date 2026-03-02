@@ -21,7 +21,7 @@ use tokio::sync::mpsc;
 #[derive(Embed)]
 #[folder = "$CARGO_MANIFEST_DIR/static"]
 #[prefix = "static/"]
-struct Assets;
+struct Static;
 
 async fn ws_handler(
     req: HttpRequest,
@@ -89,6 +89,7 @@ pub struct Mdwatch {
     pub content: String,
     pub title: String,
     pub style: String,
+    pub script: String,
 }
 
 #[get("/")]
@@ -130,6 +131,7 @@ async fn home(file: web::Data<String>) -> actix_web::Result<HttpResponse> {
         content: html_output,
         title: file_name.to_string_lossy().to_string(),
         style: get_styles(),
+        script: get_scripts(),
     };
 
     match template.render() {
@@ -145,7 +147,7 @@ async fn home(file: web::Data<String>) -> actix_web::Result<HttpResponse> {
 }
 
 fn get_styles() -> String {
-    match Assets::get("static/global.css") {
+    match Static::get("static/global.css") {
         Some(file) => match std::str::from_utf8(&file.data) {
             Ok(css) => css.to_string(),
             Err(e) => {
@@ -155,6 +157,22 @@ fn get_styles() -> String {
         },
         None => {
             eprintln!("CSS file not found in embedded assets.");
+            String::new()
+        }
+    }
+}
+
+fn get_scripts() -> String {
+    match Static::get("static/client.js") {
+        Some(file) => match std::str::from_utf8(&file.data) {
+            Ok(js) => js.to_string(),
+            Err(e) => {
+                eprintln!("Failed to read JS file: {e}");
+                String::new()
+            }
+        },
+        None => {
+            eprintln!("JS file not found in embedded assets.");
             String::new()
         }
     }
