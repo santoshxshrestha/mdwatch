@@ -8,7 +8,6 @@ use actix_web::HttpServer;
 use actix_web::Responder;
 use actix_web::get;
 use actix_web::{HttpRequest, HttpResponse};
-use actix_ws;
 use ammonia::clean;
 use args::MdwatchArgs;
 use askama::Template;
