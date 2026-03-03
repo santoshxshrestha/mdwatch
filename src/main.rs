@@ -3,8 +3,8 @@ use notify::event::RemoveKind;
 use notify_debouncer_full::DebouncedEvent;
 use notify_debouncer_full::{DebounceEventResult, new_debouncer, notify::*};
 use pulldown_cmark::Options;
-use std::fs;
 use std::path::Path;
+use tokio::fs;
 use tokio::time::Duration;
 mod args;
 use actix_web::App;
@@ -97,8 +97,7 @@ async fn ws_handler(
                 break;
             }
             if matches!(event.kind, EventKind::Modify(ModifyKind::Data(_))) {
-                println!("File modified");
-                let latest_markdown = match get_markdown(&file_path) {
+                let latest_markdown = match get_markdown(&file_path).await {
                     Ok(md) => md,
                     Err(e) => {
                         eprintln!("Error reading markdown file: {e}");
@@ -117,8 +116,8 @@ async fn ws_handler(
     Ok(response)
 }
 
-pub fn get_markdown(file_path: &String) -> std::io::Result<String> {
-    let markdown_input: String = fs::read_to_string(file_path)?;
+async fn get_markdown(file_path: &String) -> std::io::Result<String> {
+    let markdown_input: String = fs::read_to_string(file_path).await?;
     let options = Options::all();
     let parser = pulldown_cmark::Parser::new_ext(&markdown_input, options);
 
@@ -130,11 +129,11 @@ pub fn get_markdown(file_path: &String) -> std::io::Result<String> {
 
 #[derive(Template)]
 #[template(path = "main.html")]
-pub struct Mdwatch {
-    pub content: String,
-    pub title: String,
-    pub style: String,
-    pub script: String,
+struct Mdwatch {
+    content: String,
+    title: String,
+    style: String,
+    script: String,
 }
 
 #[get("/")]
@@ -162,7 +161,7 @@ async fn home(file: web::Data<String>) -> actix_web::Result<HttpResponse> {
         ));
     };
 
-    let html_output = match get_markdown(&file.as_str().to_string()) {
+    let html_output = match get_markdown(&file.as_str().to_string()).await {
         Ok(html) => html,
         Err(e) => {
             eprintln!("Error processing markdown file: {e}");
