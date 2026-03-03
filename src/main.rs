@@ -1,4 +1,3 @@
-#![allow(unused)]
 use actix_web::web;
 use notify::event::RemoveKind;
 use notify_debouncer_full::DebouncedEvent;
@@ -18,7 +17,7 @@ use args::MdwatchArgs;
 use askama::Template;
 use clap::Parser;
 
-use notify::{Event, RecursiveMode, Result, Watcher, event::ModifyKind};
+use notify::{RecursiveMode, event::ModifyKind};
 use rust_embed::Embed;
 use tokio::sync::mpsc;
 
