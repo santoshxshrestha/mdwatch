@@ -1,7 +1,12 @@
+#![allow(unused)]
 use actix_web::web;
+use notify::event::RemoveKind;
+use notify_debouncer_full::DebouncedEvent;
+use notify_debouncer_full::{DebounceEventResult, new_debouncer, notify::*};
 use pulldown_cmark::Options;
 use std::fs;
 use std::path::Path;
+use tokio::time::Duration;
 mod args;
 use actix_web::App;
 use actix_web::HttpServer;
@@ -13,7 +18,7 @@ use args::MdwatchArgs;
 use askama::Template;
 use clap::Parser;
 
-use notify::{Event, RecursiveMode, Result, Watcher};
+use notify::{Event, RecursiveMode, Result, Watcher, event::ModifyKind};
 use rust_embed::Embed;
 use tokio::sync::mpsc;
 
@@ -63,41 +68,47 @@ async fn ws_handler(
 ) -> actix_web::Result<impl Responder> {
     let (response, mut session, mut _msg_stream) = actix_ws::handle(&req, body)?;
     let file_path = file.as_str().to_string();
-    let (watch_tx, mut notify_rx) = mpsc::unbounded_channel::<Result<Event>>();
+    let (watch_tx, mut notify_rx) = mpsc::unbounded_channel::<DebouncedEvent>();
 
-    let mut watcher = notify::recommended_watcher(move |res| {
-        let _ = watch_tx.send(res);
-    })
+    let mut debouncer = new_debouncer(
+        Duration::from_secs(2),
+        None,
+        move |result: DebounceEventResult| match result {
+            Ok(events) => events.into_iter().for_each(|event| {
+                let _ = watch_tx.send(event);
+            }),
+            Err(errors) => errors
+                .iter()
+                .for_each(|error| eprintln!("watch error: {error:?}")),
+        },
+    )
     .map_err(actix_web::error::ErrorInternalServerError)?;
 
-    watcher
-        .watch(Path::new(&file_path), RecursiveMode::NonRecursive)
+    debouncer
+        .watch(&file_path, RecursiveMode::NonRecursive)
         .map_err(actix_web::error::ErrorInternalServerError)?;
 
     actix_web::rt::spawn(async move {
         // Keep the watcher alive in this async task to keep the msg_stream alive
-        let _watcher = watcher;
-        while let Some(res) = notify_rx.recv().await {
-            match res {
-                Ok(event) => {
-                    if event.kind.is_remove() {
-                        eprintln!("File removed: {}", file_path);
-                        break;
+        let _watcher = debouncer;
+
+        while let Some(event) = notify_rx.recv().await {
+            if matches!(event.kind, EventKind::Remove(RemoveKind::File)) {
+                eprintln!("File removed: {}", file_path);
+                break;
+            }
+            if matches!(event.kind, EventKind::Modify(ModifyKind::Data(_))) {
+                println!("File modified");
+                let latest_markdown = match get_markdown(&file_path) {
+                    Ok(md) => md,
+                    Err(e) => {
+                        eprintln!("Error reading markdown file: {e}");
+                        continue;
                     }
-                    if event.kind.is_modify() {
-                        let latest_markdown = match get_markdown(&file_path) {
-                            Ok(md) => md,
-                            Err(e) => {
-                                eprintln!("Error reading markdown file: {e}");
-                                continue;
-                            }
-                        };
-                        if session.text(latest_markdown).await.is_err() {
-                            break;
-                        }
-                    }
+                };
+                if session.text(latest_markdown).await.is_err() {
+                    break;
                 }
-                Err(e) => eprintln!("watch error: {e:?}"),
             }
         }
 

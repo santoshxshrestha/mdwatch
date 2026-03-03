@@ -17,6 +17,7 @@ ammonia = "4.1.1"
 askama = { version = "0.14.0", features = ["full"] }
 clap = { version = "4.5.46", features = ["derive"] }
 notify = "8.2.0"
+notify-debouncer-full = "0.7.0"
 pulldown-cmark = "0.13.0"
 rust-embed = { version = "8.11.0", features = ["interpolate-folder-path"] }
 tokio = { version = "1.49.0", features = ["full"] }
