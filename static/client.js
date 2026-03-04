@@ -3,8 +3,8 @@ function setThemeIcon(theme) {
   if (!button) return;
   button.innerHTML =
     theme === "light"
-      ? '<i class="fa-regular fa-sun"></i>'
-      : '<i class="fa-solid fa-moon"></i>';
+      ? '<i class="icon-sun"></i>'
+      : '<i class="icon-moon"></i>';
 }
 
 function highlightBlocks(root = document) {

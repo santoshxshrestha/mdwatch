@@ -3,14 +3,17 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style id="fontello">
+      {{ lib.fontello | safe }}
+    </style>
     <style id="hljs-theme-dark">
       {{ lib.hljs_theme_dark | safe }}
     </style>
     <style id="hljs-theme-light" disabled>
       {{ lib.hljs_theme_light | safe }}
     </style>
-    <script id="hljs-script" type="application/json">
-      {{lib.hljs_script | safe }}
+    <script id="hljs-script">
+      {{ lib.hljs_script | safe }}
     </script>
     <title>{{ title }} - mdwatch</title>
     <style>
@@ -19,18 +22,12 @@
   </head>
   <body>
     <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">
-      <i class="fa-solid fa-moon"></i>
+      <i class="icon-moon"></i>
     </button>
     <article id="content">{{content | safe}}</article>
 
-    <script id="injected-script" type="application/json">
+    <script id="injected-script">
       {{ script | safe }}
-    </script>
-    <script>
-      const code = document.getElementById("injected-script").textContent;
-      (0, eval)(code);
-      const hljsCode = document.getElementById("hljs-script").textContent;
-      (0, eval)(hljsCode);
     </script>
   </body>
 </html>

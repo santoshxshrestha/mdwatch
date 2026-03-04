@@ -120,6 +120,7 @@ struct Mdwatch {
 }
 
 struct JsLib {
+    fontello: String,
     hljs_theme_dark: String,
     hljs_theme_light: String,
     hljs_script: String,
@@ -128,6 +129,7 @@ struct JsLib {
 impl Default for JsLib {
     fn default() -> Self {
         Self {
+            fontello: get_embedded_file("static/lib/fontello.css"),
             hljs_theme_dark: get_embedded_file("static/lib/github-dark.min.css"),
             hljs_theme_light: get_embedded_file("static/lib/github-light.min.css"),
             hljs_script: get_embedded_file("static/lib/highlight.min.js"),
