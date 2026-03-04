@@ -1,10 +1,15 @@
 function setThemeIcon(theme) {
   const button = document.querySelector(".theme-toggle");
   if (!button) return;
+
   button.innerHTML =
     theme === "light"
-      ? '<i class="icon-sun"></i>'
-      : '<i class="icon-moon"></i>';
+      ? `<svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
+           <circle cx="12" cy="12" r="5" fill="currentColor"></circle>
+         </svg>`
+      : `<svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
+           <path d="M21 12.79A9 9 0 0111.21 3 7 7 0 1021 12.79z" fill="currentColor"></path>
+         </svg>`;
 }
 
 function highlightBlocks(root = document) {

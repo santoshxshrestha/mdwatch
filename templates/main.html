@@ -3,9 +3,6 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <style id="fontello">
-      {{ lib.fontello | safe }}
-    </style>
     <style id="hljs-theme-dark">
       {{ lib.hljs_theme_dark | safe }}
     </style>
@@ -22,7 +19,19 @@
   </head>
   <body>
     <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">
-      <i class="icon-moon"></i>
+      <svg
+        id="icon-moon"
+        viewBox="0 0 24 24"
+        width="24"
+        height="24"
+        style="display: none"
+      >
+        <path
+          d="M21 12.79A9 9 0 0111.21 3
+             7 7 0 1021 12.79z"
+          fill="currentColor"
+        />
+      </svg>
     </button>
     <article id="content">{{content | safe}}</article>
 
