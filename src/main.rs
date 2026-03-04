@@ -4,8 +4,8 @@ use notify_debouncer_full::DebouncedEvent;
 use notify_debouncer_full::{DebounceEventResult, new_debouncer, notify::*};
 use pulldown_cmark::Options;
 use std::path::Path;
+use std::time::{Duration, Instant};
 use tokio::fs;
-use tokio::time::Duration;
 mod args;
 use actix_web::App;
 use actix_web::HttpServer;
@@ -52,7 +52,7 @@ async fn ws_handler(
     let (watch_tx, mut notify_rx) = mpsc::unbounded_channel::<DebouncedEvent>();
 
     let mut debouncer = new_debouncer(
-        Duration::from_secs(2),
+        Duration::from_millis(200),
         None,
         move |result: DebounceEventResult| match result {
             Ok(events) => events.into_iter().for_each(|event| {
@@ -73,12 +73,17 @@ async fn ws_handler(
         // Keep the watcher alive in this async task to keep the msg_stream alive
         let _watcher = debouncer;
 
+        // here we initially set last_sent to 1 second ago to allow the first update to be sent immediately
+        let mut last_sent = Instant::now() - Duration::from_secs(1);
+
         while let Some(event) = notify_rx.recv().await {
             if matches!(event.kind, EventKind::Remove(RemoveKind::File)) {
                 eprintln!("File removed: {}", file_path);
                 break;
             }
-            if matches!(event.kind, EventKind::Modify(ModifyKind::Data(_))) {
+            if matches!(event.kind, EventKind::Modify(ModifyKind::Data(_)))
+                && last_sent.elapsed() >= Duration::from_secs(1)
+            {
                 let latest_markdown = match get_markdown(&file_path).await {
                     Ok(md) => md,
                     Err(e) => {
@@ -86,6 +91,7 @@ async fn ws_handler(
                         continue;
                     }
                 };
+                last_sent = Instant::now();
                 if session.text(latest_markdown).await.is_err() {
                     break;
                 }
