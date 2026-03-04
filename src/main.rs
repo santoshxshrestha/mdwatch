@@ -26,36 +26,18 @@ use tokio::sync::mpsc;
 #[prefix = "static/"]
 struct Static;
 
-impl Static {
-    fn get_styles() -> String {
-        match Static::get("static/global.css") {
-            Some(file) => match std::str::from_utf8(&file.data) {
-                Ok(css) => css.to_string(),
-                Err(e) => {
-                    eprintln!("Failed to read CSS file: {e}");
-                    String::new()
-                }
-            },
-            None => {
-                eprintln!("CSS file not found in embedded assets.");
+fn get_embedded_file(file_path: &str) -> String {
+    match Static::get(file_path) {
+        Some(file) => match std::str::from_utf8(&file.data) {
+            Ok(js) => js.to_string(),
+            Err(e) => {
+                eprintln!("Failed to read embedded file: {e}");
                 String::new()
             }
-        }
-    }
-
-    fn get_scripts() -> String {
-        match Static::get("static/client.js") {
-            Some(file) => match std::str::from_utf8(&file.data) {
-                Ok(js) => js.to_string(),
-                Err(e) => {
-                    eprintln!("Failed to read JS file: {e}");
-                    String::new()
-                }
-            },
-            None => {
-                eprintln!("JS file not found in embedded assets.");
-                String::new()
-            }
+        },
+        None => {
+            eprintln!("File not found in embedded files.");
+            String::new()
         }
     }
 }
@@ -134,6 +116,23 @@ struct Mdwatch {
     title: String,
     style: String,
     script: String,
+    lib: JsLib,
+}
+
+struct JsLib {
+    hljs_theme_dark: String,
+    hljs_theme_light: String,
+    hljs_script: String,
+}
+
+impl Default for JsLib {
+    fn default() -> Self {
+        Self {
+            hljs_theme_dark: get_embedded_file("static/lib/github-dark.min.css"),
+            hljs_theme_light: get_embedded_file("static/lib/github-light.min.css"),
+            hljs_script: get_embedded_file("static/lib/highlight.min.js"),
+        }
+    }
 }
 
 #[get("/")]
@@ -174,8 +173,9 @@ async fn home(file: web::Data<String>) -> actix_web::Result<HttpResponse> {
     let template = Mdwatch {
         content: html_output,
         title: file_name.to_string_lossy().to_string(),
-        style: Static::get_styles(),
-        script: Static::get_scripts(),
+        style: get_embedded_file("static/global.css"),
+        script: get_embedded_file("static/client.js"),
+        lib: JsLib::default(),
     };
 
     match template.render() {
