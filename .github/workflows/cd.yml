@@ -14,11 +14,15 @@ env:
 
 jobs:
   build:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          fetch-depth: 0
 
       - name: Set up Rust
         uses: actions-rust-lang/setup-rust-toolchain@v1
@@ -35,7 +39,7 @@ jobs:
       - name: Get previous version from main
         id: previous
         run: |
-          prev_ver=$(git show HEAD^:Cargo.toml | grep '^version' | head -1 | sed 's/version = "\(.*\)"/\1/')
+          prev_ver=$(git show origin/main:Cargo.toml | grep '^version' | head -1 | sed 's/version = "\(.*\)"/\1/')
           echo "version=$prev_ver" >> $GITHUB_OUTPUT
 
       - name: Check for version change
