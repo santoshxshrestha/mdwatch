@@ -29,7 +29,7 @@ struct Static;
 fn get_embedded_file(file_path: &str) -> String {
     match Static::get(file_path) {
         Some(file) => match std::str::from_utf8(&file.data) {
-            Ok(js) => js.to_string(),
+            Ok(content) => content.to_string(),
             Err(e) => {
                 eprintln!("Failed to read embedded file: {e}");
                 String::new()
