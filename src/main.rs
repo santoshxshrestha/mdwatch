@@ -116,17 +116,17 @@ struct Mdwatch {
     title: String,
     style: String,
     script: String,
-    lib: JsLib,
+    lib: Libs,
 }
 
-struct JsLib {
+struct Libs {
     fontello: String,
     hljs_theme_dark: String,
     hljs_theme_light: String,
     hljs_script: String,
 }
 
-impl Default for JsLib {
+impl Default for Libs {
     fn default() -> Self {
         Self {
             fontello: get_embedded_file("static/lib/fontello.css"),
@@ -177,7 +177,7 @@ async fn home(file: web::Data<String>) -> actix_web::Result<HttpResponse> {
         title: file_name.to_string_lossy().to_string(),
         style: get_embedded_file("static/global.css"),
         script: get_embedded_file("static/client.js"),
-        lib: JsLib::default(),
+        lib: Libs::default(),
     };
 
     match template.render() {

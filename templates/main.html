@@ -12,7 +12,7 @@
     <style id="hljs-theme-light" disabled>
       {{ lib.hljs_theme_light | safe }}
     </style>
-    <script id="hljs-script">
+    <script id="hljs-script" type="application/json">
       {{ lib.hljs_script | safe }}
     </script>
     <title>{{ title }} - mdwatch</title>
@@ -26,8 +26,15 @@
     </button>
     <article id="content">{{content | safe}}</article>
 
-    <script id="injected-script">
+    <script id="injected-script" type="application/json">
       {{ script | safe }}
+    </script>
+
+    <script>
+      const code = document.getElementById("injected-script").textContent;
+      (0, eval)(code);
+      const hljsCode = document.getElementById("hljs-script").textContent;
+      (0, eval)(hljsCode);
     </script>
   </body>
 </html>
