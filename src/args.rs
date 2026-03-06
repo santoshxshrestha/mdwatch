@@ -2,7 +2,6 @@ use clap::Parser;
 
 #[derive(Debug, Parser)]
 #[clap(
-    name = "mdserve",
     author = "santoshxshrestha",
     version,
     about = "A CLI tool to live-preview Markdown files in your browser using a local web server"
