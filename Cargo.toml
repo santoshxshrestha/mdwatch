@@ -11,6 +11,7 @@ documentation = "https://github.com/santoshxshrestha/mdwatch#readme"
 readme = "README.md"
 
 [dependencies]
+actix-files = "0.6.10"
 actix-web = "4.11.0"
 actix-ws = "0.4.0"
 ammonia = "4.1.1"
@@ -19,6 +20,7 @@ clap = { version = "4.5.46", features = ["derive"] }
 notify = "8.2.0"
 notify-debouncer-full = "0.7.0"
 pulldown-cmark = "0.13.0"
+regex = "1.12.3"
 rust-embed = { version = "8.11.0", features = ["interpolate-folder-path"] }
 tokio = { version = "1.49.0", features = ["full"] }
 webbrowser = "1.0.5"

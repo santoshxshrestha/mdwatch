@@ -3,7 +3,7 @@ use notify::event::RemoveKind;
 use notify_debouncer_full::DebouncedEvent;
 use notify_debouncer_full::{DebounceEventResult, new_debouncer, notify::*};
 use pulldown_cmark::Options;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 use tokio::fs;
 mod args;
@@ -12,10 +12,12 @@ use actix_web::HttpServer;
 use actix_web::Responder;
 use actix_web::get;
 use actix_web::{HttpRequest, HttpResponse};
-use ammonia::clean;
+use actix_files::NamedFile;
+use ammonia::Builder;
 use args::MdwatchArgs;
 use askama::Template;
 use clap::Parser;
+use regex::Regex;
 
 use notify::{RecursiveMode, event::ModifyKind};
 use rust_embed::Embed;
@@ -104,6 +106,37 @@ async fn ws_handler(
     Ok(response)
 }
 
+/// Rewrite local image `src` attributes to use the `/_local_image/` prefix.
+/// Remote images (http://, https://, //, data:) are left untouched.
+fn rewrite_image_paths(html: &str) -> String {
+    let re = Regex::new(r#"(<img\s[^>]*?src\s*=\s*")([^"]*?)(")"#)
+        .expect("invalid regex");
+    re.replace_all(html, |caps: &regex::Captures| {
+        let prefix = &caps[1];
+        let src = &caps[2];
+        let suffix = &caps[3];
+        // Skip remote URLs and data URIs
+        if src.starts_with("http://")
+            || src.starts_with("https://")
+            || src.starts_with("//")
+            || src.starts_with("data:")
+        {
+            format!("{}{}{}", prefix, src, suffix)
+        } else {
+            format!("{}/_local_image/{}{}", prefix, src, suffix)
+        }
+    })
+    .to_string()
+}
+
+/// Sanitize HTML while preserving relative URLs (needed for /_local_image/ paths).
+fn sanitize_html(html: &str) -> String {
+    Builder::default()
+        .url_relative(ammonia::UrlRelative::PassThrough)
+        .clean(html)
+        .to_string()
+}
+
 async fn get_markdown(file_path: &String) -> std::io::Result<String> {
     let markdown_input: String = fs::read_to_string(file_path).await?;
     let options = Options::all();
@@ -111,7 +144,8 @@ async fn get_markdown(file_path: &String) -> std::io::Result<String> {
 
     let mut html_output = String::new();
     pulldown_cmark::html::push_html(&mut html_output, parser);
-    html_output = clean(&html_output);
+    html_output = rewrite_image_paths(&html_output);
+    html_output = sanitize_html(&html_output);
     Ok(html_output)
 }
 
@@ -196,14 +230,55 @@ async fn home(file: web::Data<String>) -> actix_web::Result<HttpResponse> {
     }
 }
 
+/// Serve local image files referenced in the markdown.
+/// Resolves the requested path relative to the markdown file's parent directory.
+#[get("/_local_image/{path:.*}")]
+async fn serve_local_image(
+    path: web::Path<String>,
+    base_dir: web::Data<PathBuf>,
+) -> actix_web::Result<NamedFile> {
+    let requested = path.into_inner();
+    let resolved = base_dir.join(&requested);
+
+    // Canonicalize to prevent directory traversal attacks (e.g. ../../etc/passwd)
+    let canonical = resolved
+        .canonicalize()
+        .map_err(|_| actix_web::error::ErrorNotFound("Image not found"))?;
+
+    let base_canonical = base_dir
+        .canonicalize()
+        .map_err(|_| actix_web::error::ErrorInternalServerError("Invalid base directory"))?;
+
+    if !canonical.starts_with(&base_canonical) {
+        return Err(actix_web::error::ErrorForbidden(
+            "Access denied: path outside base directory",
+        ));
+    }
+
+    Ok(NamedFile::open(canonical)?)
+}
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     let args = MdwatchArgs::parse();
 
     let MdwatchArgs { file, ip, port } = args;
 
+    // Resolve the parent directory of the markdown file for serving local images
+    let file_path = Path::new(&file);
+    let base_dir: PathBuf = file_path
+        .parent()
+        .map(|p| {
+            if p.as_os_str().is_empty() {
+                PathBuf::from(".")
+            } else {
+                p.to_path_buf()
+            }
+        })
+        .unwrap_or_else(|| PathBuf::from("."));
+
     if ip == "0.0.0.0" {
-        eprintln!("  Warning: Binding to 0.0.0.0 exposes your server to the entire network!");
+        eprintln!("  Warning: Binding to 0.0.0.0 exposes your server to the entire network!");
         eprintln!("         Make sure you trust your network or firewall settings.");
     }
 
@@ -218,7 +293,9 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .route("/ws", web::get().to(ws_handler))
             .service(home)
+            .service(serve_local_image)
             .app_data(web::Data::new(file.clone()))
+            .app_data(web::Data::new(base_dir.clone()))
     })
     .bind(format!("{}:{}", ip, port))?
     .run()
