@@ -133,6 +133,7 @@ fn rewrite_image_paths(html: &str) -> String {
 fn sanitize_html(html: &str) -> String {
     Builder::default()
         .url_relative(PassThrough)
+        .add_generic_attributes(&["align"])
         .clean(html)
         .to_string()
 }
