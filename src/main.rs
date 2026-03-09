@@ -301,3 +301,28 @@ async fn main() -> std::io::Result<()> {
     .run()
     .await
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_rewrite_image_paths() {
+        let inputs = [
+            r#"<img src="image.png" alt="Image">"#,
+            r#"<img src="http://example.com/image.png" alt="Remote Image">"#,
+            r#"<img src="data:image/png;base64,..." alt="Data URI">"#,
+            r#"<img src="//example.com/image.png" alt="Protocol-relative URL">"#,
+        ];
+        let expected = [
+            r#"<img src="/_local_image/image.png" alt="Image">"#,
+            r#"<img src="http://example.com/image.png" alt="Remote Image">"#,
+            r#"<img src="data:image/png;base64,..." alt="Data URI">"#,
+            r#"<img src="//example.com/image.png" alt="Protocol-relative URL">"#,
+        ];
+
+        for (input, expected) in inputs.iter().zip(expected.iter()) {
+            assert_eq!(rewrite_image_paths(input), *expected);
+        }
+    }
+}
