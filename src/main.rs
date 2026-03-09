@@ -1,4 +1,5 @@
 use actix_web::web;
+use ammonia::UrlRelative::PassThrough;
 use notify::event::RemoveKind;
 use notify_debouncer_full::DebouncedEvent;
 use notify_debouncer_full::{DebounceEventResult, new_debouncer, notify::*};
@@ -7,12 +8,12 @@ use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 use tokio::fs;
 mod args;
+use actix_files::NamedFile;
 use actix_web::App;
 use actix_web::HttpServer;
 use actix_web::Responder;
 use actix_web::get;
 use actix_web::{HttpRequest, HttpResponse};
-use actix_files::NamedFile;
 use ammonia::Builder;
 use args::MdwatchArgs;
 use askama::Template;
@@ -109,8 +110,7 @@ async fn ws_handler(
 /// Rewrite local image `src` attributes to use the `/_local_image/` prefix.
 /// Remote images (http://, https://, //, data:) are left untouched.
 fn rewrite_image_paths(html: &str) -> String {
-    let re = Regex::new(r#"(<img\s[^>]*?src\s*=\s*")([^"]*?)(")"#)
-        .expect("invalid regex");
+    let re = Regex::new(r#"(<img\s[^>]*?src\s*=\s*")([^"]*?)(")"#).expect("invalid regex");
     re.replace_all(html, |caps: &regex::Captures| {
         let prefix = &caps[1];
         let src = &caps[2];
@@ -132,7 +132,7 @@ fn rewrite_image_paths(html: &str) -> String {
 /// Sanitize HTML while preserving relative URLs (needed for /_local_image/ paths).
 fn sanitize_html(html: &str) -> String {
     Builder::default()
-        .url_relative(ammonia::UrlRelative::PassThrough)
+        .url_relative(PassThrough)
         .clean(html)
         .to_string()
 }
