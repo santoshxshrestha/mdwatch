@@ -1,17 +1,13 @@
 name: Rust
-
 on:
   workflow_run:
     workflows: ["Test"]
     types:
       - completed
-
 permissions:
   contents: write
-
 env:
   CARGO_TERM_COLOR: always
-
 jobs:
   build:
     if: >-
@@ -22,6 +18,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          # Check out the exact commit that triggered the Test workflow,
+          # not just whatever HEAD happens to be on main right now.
+          ref: ${{ github.event.workflow_run.head_sha }}
           fetch-depth: 0
 
       - name: Set up Rust
@@ -33,30 +32,35 @@ jobs:
       - name: Get current version
         id: current
         run: |
-          ver=$(grep '^version' Cargo.toml | head -1 | sed 's/version = "\(.*\)"/\1/')
+          ver=$(grep '^version' Cargo.toml | head -1 | sed 's/.*version\s*=\s*["'"'"']\([^"'"'"']*\)["'"'"'].*/\1/')
           echo "version=$ver" >> $GITHUB_OUTPUT
 
-      - name: Get previous version from main
+      # Compare against the parent commit (HEAD~1) instead of origin/main.
+      # After a merge, origin/main and HEAD point to the same commit, so
+      # comparing them always shows "no change". HEAD~1 is the last commit
+      # before this push, which is what we actually want to diff against.
+      - name: Get previous version
         id: previous
         run: |
-          prev_ver=$(git show origin/main:Cargo.toml | grep '^version' | head -1 | sed 's/version = "\(.*\)"/\1/')
+          prev_ver=$(git show HEAD~1:Cargo.toml | grep '^version' | head -1 | sed 's/.*version\s*=\s*["'"'"']\([^"'"'"']*\)["'"'"'].*/\1/')
           echo "version=$prev_ver" >> $GITHUB_OUTPUT
 
       - name: Check for version change
         id: changed
         run: |
+          echo "Current version : ${{ steps.current.outputs.version }}"
+          echo "Previous version: ${{ steps.previous.outputs.version }}"
           if [ "${{ steps.current.outputs.version }}" != "${{ steps.previous.outputs.version }}" ]; then
-          echo "changed=true" >> $GITHUB_OUTPUT
+            echo "changed=true" >> $GITHUB_OUTPUT
           else
-          echo "changed=false" >> $GITHUB_OUTPUT
+            echo "changed=false" >> $GITHUB_OUTPUT
           fi
 
       - name: Publish to crates.io
         if: steps.changed.outputs.changed == 'true'
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-        run: |
-          cargo publish --allow-dirty
+        run: cargo publish
 
       - name: Tag and push version
         if: steps.changed.outputs.changed == 'true'
@@ -67,3 +71,12 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git tag "v${{ steps.current.outputs.version }}"
           git push origin "v${{ steps.current.outputs.version }}"
+
+      - name: Create GitHub Release
+        if: steps.changed.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "v${{ steps.current.outputs.version }}" \
+            --title "v${{ steps.current.outputs.version }}" \
+            --generate-notes
