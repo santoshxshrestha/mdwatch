@@ -1,13 +1,13 @@
 [package]
 name = "mdwatch"
-version = "0.1.22"
+version = "0.1.23"
 edition = "2024"
 authors = ["Santosh Shrestha <santoshxshrestha@gmail.com> "]
-description = "A simple CLI tool to live-preview Markdown files in your browser."
+description = "A CLI tool to live-preview Markdown files in your browser using a local web server"
 license = "MIT"
-repository = "https://github.com/santoshxshrestha/mdwatch"
-homepage = "https://github.com/santoshxshrestha/mdwatch"
-documentation = "https://github.com/santoshxshrestha/mdwatch#readme"
+repository = "https://github.com/vimlinuz/mdwatch"
+homepage = "https://github.com/vimlinuz/mdwatch"
+documentation = "https://github.com/vimlinuz/mdwatch#readme"
 readme = "README.md"
 
 [dependencies]
