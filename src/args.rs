@@ -4,7 +4,7 @@ use clap::Parser;
 #[clap(
     author,
     version,
-    about = "A CLI tool to live-preview Markdown files in your browser using a local web server",
+    about,
     long_about = None,
 )]
 pub struct MdwatchArgs {
