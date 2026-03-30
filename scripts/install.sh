@@ -33,7 +33,7 @@ if [ -d "$HOME/mdwatch" ]; then
     cd "$HOME/mdwatch"
     git pull
 else
-    git clone --depth 1 --branch main https://github.com/santoshxshrestha/mdwatch.git "$HOME/mdwatch"
+    git clone --depth 1 --branch main https://github.com/vimlinuz/mdwatch.git "$HOME/mdwatch"
 fi
 
 echo -e "${INFO} Building mdwatch in release mode..."

@@ -37,7 +37,7 @@ It automatically downloads, compiles, and installs the latest version to your `$
 **Alternative:** Installs the latest release binary to your system PATH.
 
 ```bash
-curl -sSfL https://raw.githubusercontent.com/santoshxshrestha/mdwatch/main/scripts/install.sh | bash
+curl -sSfL https://raw.githubusercontent.com/vimlinuz/mdwatch/main/scripts/install.sh | bash
 ```
 
 - This script will:
@@ -56,7 +56,7 @@ If you prefer full control or want to customize the build:
 1. **Clone the repository:**
 
    ```bash
-   git clone https://github.com/santoshxshrestha/mdwatch.git
+   git clone https://github.com/vimlinuz/mdwatch.git
    cd mdwatch
    ```
 
@@ -111,7 +111,7 @@ nix run . -- README.md [--ip 127.0.0.1] [--port 3000]
 You can also run the latest version of `mdwatch` directly from GitHub, without cloning the repository:
 
 ```bash
-nix run github:santoshxshrestha/mdwatch -- README.md [--ip 127.0.0.1] [--port 3000]
+nix run github:vimlinuz/mdwatch -- README.md [--ip 127.0.0.1] [--port 3000]
 ```
 
 This will fetch, build, and run `mdwatch` from the official repository. You can pass any arguments after the `--` as usual.
@@ -140,7 +140,7 @@ You can uninstall using the provided script or manually:
 ### 1. Quick Uninstall via Script
 
 ```bash
-curl -sSfL https://raw.githubusercontent.com/santoshxshrestha/mdwatch/main/scripts/uninstall.sh | bash
+curl -sSfL https://raw.githubusercontent.com/vimlinuz/mdwatch/main/scripts/uninstall.sh | bash
 ```
 
 ### 2. Manual Uninstall
