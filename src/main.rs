@@ -286,11 +286,7 @@ async fn main() -> std::io::Result<()> {
     println!("Server running at:");
     println!(" - http://{}:{}/", ip, port);
 
-    if let Err(e) = webbrowser::open(&format!("http://localhost:{}/", port)) {
-        eprintln!("Failed to open browser: {e}");
-    }
-
-    HttpServer::new(move || {
+    match HttpServer::new(move || {
         App::new()
             .route("/ws", web::get().to(ws_handler))
             .service(home)
@@ -298,9 +294,19 @@ async fn main() -> std::io::Result<()> {
             .app_data(web::Data::new(file.clone()))
             .app_data(web::Data::new(base_dir.clone()))
     })
-    .bind(format!("{}:{}", ip, port))?
-    .run()
-    .await
+    .bind(format!("{}:{}", ip, port))
+    {
+        Ok(server) => {
+            if let Err(e) = webbrowser::open(&format!("http://localhost:{}/", port)) {
+                eprintln!("Failed to open browser: {e}");
+            }
+            server.run().await
+        }
+        Err(e) => {
+            eprintln!("Failed to start server: {e}");
+            std::process::exit(1);
+        }
+    }
 }
 
 #[cfg(test)]
