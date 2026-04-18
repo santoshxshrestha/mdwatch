@@ -1,28 +1,32 @@
-use actix_web::web;
-use ammonia::UrlRelative::PassThrough;
-use notify::event::RemoveKind;
-use notify_debouncer_full::DebouncedEvent;
-use notify_debouncer_full::{DebounceEventResult, new_debouncer, notify::*};
-use pulldown_cmark::Options;
-use std::path::{Path, PathBuf};
-use std::time::{Duration, Instant};
-use tokio::fs;
 mod args;
+mod utils;
+
 use actix_files::NamedFile;
 use actix_web::App;
 use actix_web::HttpServer;
 use actix_web::Responder;
 use actix_web::get;
+use actix_web::web;
 use actix_web::{HttpRequest, HttpResponse};
 use ammonia::Builder;
+use ammonia::UrlRelative::PassThrough;
 use args::MdwatchArgs;
 use askama::Template;
 use clap::Parser;
+use notify::event::RemoveKind;
+use notify_debouncer_full::DebouncedEvent;
+use notify_debouncer_full::{DebounceEventResult, new_debouncer, notify::*};
+use pulldown_cmark::Options;
 use regex::Regex;
+use std::path::{Path, PathBuf};
+use std::time::{Duration, Instant};
+use tokio::fs;
 
 use notify::{RecursiveMode, event::ModifyKind};
 use rust_embed::Embed;
 use tokio::sync::mpsc;
+
+use utils::get_random_port;
 
 #[derive(Embed)]
 #[folder = "$CARGO_MANIFEST_DIR/static"]
@@ -263,7 +267,9 @@ async fn serve_local_image(
 async fn main() -> std::io::Result<()> {
     let args = MdwatchArgs::parse();
 
-    let MdwatchArgs { file, ip, port } = args;
+    let file = args.file;
+    let ip = args.ip;
+    let port = args.port.unwrap_or_else(get_random_port);
 
     // Resolve the parent directory of the markdown file for serving local images
     let file_path = Path::new(&file);
