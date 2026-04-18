@@ -98,5 +98,5 @@ ws.onmessage = (event) => {
   highlightBlocks(content);
 };
 
-ws.onclose = () => console.log("closed");
+ws.onclose = () => self.close();
 ws.onerror = () => console.log("error");
