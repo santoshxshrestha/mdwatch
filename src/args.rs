@@ -15,7 +15,7 @@ pub struct MdwatchArgs {
     #[clap(short, long, default_value = "127.0.0.1")]
     pub ip: String,
 
-    /// Port number to serve on
-    #[clap(short, long, default_value_t = 3000)]
-    pub port: u16,
+    /// Port number to serve on (If not provided, a random port will be used)
+    #[clap(short, long)]
+    pub port: Option<u16>,
 }
