@@ -138,6 +138,7 @@ fn sanitize_html(html: &str) -> String {
     Builder::default()
         .url_relative(PassThrough)
         .add_generic_attributes(&["align"])
+        .add_tag_attributes("code", &["class"])
         .clean(html)
         .to_string()
 }
