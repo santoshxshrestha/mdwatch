@@ -168,6 +168,7 @@ struct Libs {
     hljs_theme_dark: String,
     hljs_theme_light: String,
     hljs_script: String,
+    mermaid_script: String,
 }
 
 impl Default for Libs {
@@ -176,6 +177,7 @@ impl Default for Libs {
             hljs_theme_dark: get_embedded_file("static/lib/github-dark.min.css"),
             hljs_theme_light: get_embedded_file("static/lib/github-light.min.css"),
             hljs_script: get_embedded_file("static/lib/highlight.min.js"),
+            mermaid_script: get_embedded_file("static/lib/mermaid.min.js"),
         }
     }
 }
