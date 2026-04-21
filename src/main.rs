@@ -143,6 +143,13 @@ fn sanitize_html(html: &str) -> String {
         .to_string()
 }
 
+fn rewrite_mermaid_tags(html: &str) -> String {
+    let re = Regex::new(r#"<pre><code class="language-mermaid">([\s\S]*?)</code></pre>"#)
+        .expect("invalid regex");
+    let src = r#"<pre class="mermaid">$1</pre>"#;
+    re.replace_all(html, src).to_string()
+}
+
 async fn get_markdown(file_path: &String) -> std::io::Result<String> {
     let markdown_input: String = fs::read_to_string(file_path).await?;
     let options = Options::all();
@@ -152,6 +159,7 @@ async fn get_markdown(file_path: &String) -> std::io::Result<String> {
     pulldown_cmark::html::push_html(&mut html_output, parser);
     html_output = rewrite_image_paths(&html_output);
     html_output = sanitize_html(&html_output);
+    html_output = rewrite_mermaid_tags(&html_output);
     Ok(html_output)
 }
 

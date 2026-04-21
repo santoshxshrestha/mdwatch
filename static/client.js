@@ -16,13 +16,6 @@ function setThemeIcon(theme) {
     `;
 }
 
-function highlightBlocks(root = document) {
-  if (!window.hljs) return;
-  root.querySelectorAll("pre code").forEach((block) => {
-    hljs.highlightElement(block);
-  });
-}
-
 function syncHighlightTheme(theme) {
   const dark = document.getElementById("hljs-theme-dark");
   const light = document.getElementById("hljs-theme-light");
