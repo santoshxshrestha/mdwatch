@@ -12,6 +12,9 @@
     <script id="hljs-script" type="application/json">
       {{ lib.hljs_script | safe }}
     </script>
+    <script id="mermaid-script" type="application/json">
+      {{ lib.mermaid_script | safe }}
+    </script>
     <title>{{ title }} - mdwatch</title>
     <style>
       {{ style | safe }}
@@ -45,6 +48,10 @@
       (0, eval)(code);
       const hljsCode = document.getElementById("hljs-script").textContent;
       (0, eval)(hljsCode);
+      hljs.highlightAll();
+
+      const mermaidCode = document.getElementById("mermaid-script").textContent;
+      mermaidCode.initialize({ startOnLoad: true });
     </script>
   </body>
 </html>
