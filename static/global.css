@@ -370,3 +370,10 @@ kbd {
 .alert-success {
   border-left-color: #28a745;
 }
+
+.mermaid {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 10px;
+}
