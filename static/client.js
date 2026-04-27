@@ -1,7 +1,7 @@
 async function renderMermaid() {
   mermaid.initialize({ startOnLoad: false });
 
-  const elements = document.querySelectorAll(".mermaid");
+  const elements = document.querySelectorAll("pre.mermaid");
 
   for (const [index, element] of elements.entries()) {
     const graphDefinition = element.textContent;
