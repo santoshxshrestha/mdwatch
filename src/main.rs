@@ -138,8 +138,16 @@ fn sanitize_html(html: &str) -> String {
     Builder::default()
         .url_relative(PassThrough)
         .add_generic_attributes(&["align"])
+        .add_tag_attributes("code", &["class"])
         .clean(html)
         .to_string()
+}
+
+fn rewrite_mermaid_tags(html: &str) -> String {
+    let re = Regex::new(r#"<pre><code class="language-mermaid">([\s\S]*?)</code></pre>"#)
+        .expect("invalid regex");
+    let src = r#"<pre class="mermaid">$1</pre>"#;
+    re.replace_all(html, src).to_string()
 }
 
 async fn get_markdown(file_path: &String) -> std::io::Result<String> {
@@ -151,6 +159,7 @@ async fn get_markdown(file_path: &String) -> std::io::Result<String> {
     pulldown_cmark::html::push_html(&mut html_output, parser);
     html_output = rewrite_image_paths(&html_output);
     html_output = sanitize_html(&html_output);
+    html_output = rewrite_mermaid_tags(&html_output);
     Ok(html_output)
 }
 
@@ -168,6 +177,7 @@ struct Libs {
     hljs_theme_dark: String,
     hljs_theme_light: String,
     hljs_script: String,
+    mermaid_script: String,
 }
 
 impl Default for Libs {
@@ -176,6 +186,7 @@ impl Default for Libs {
             hljs_theme_dark: get_embedded_file("static/lib/github-dark.min.css"),
             hljs_theme_light: get_embedded_file("static/lib/github-light.min.css"),
             hljs_script: get_embedded_file("static/lib/highlight.min.js"),
+            mermaid_script: get_embedded_file("static/lib/mermaid.min.js"),
         }
     }
 }

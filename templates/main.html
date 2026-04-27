@@ -9,9 +9,10 @@
     <style id="hljs-theme-light" disabled>
       {{ lib.hljs_theme_light | safe }}
     </style>
-    <script id="hljs-script" type="application/json">
-      {{ lib.hljs_script | safe }}
-    </script>
+
+    <script>{{lib.mermaid_script|safe}}</script>
+    <script>{{lib.hljs_script | safe}}</script>
+
     <title>{{ title }} - mdwatch</title>
     <style>
       {{ style | safe }}
@@ -35,16 +36,6 @@
       </svg>
     </button>
     <article id="content">{{content | safe}}</article>
-
-    <script id="injected-script" type="application/json">
-      {{ script | safe }}
-    </script>
-
-    <script>
-      const code = document.getElementById("injected-script").textContent;
-      (0, eval)(code);
-      const hljsCode = document.getElementById("hljs-script").textContent;
-      (0, eval)(hljsCode);
-    </script>
+    <script>{{script | safe}}</script>
   </body>
 </html>

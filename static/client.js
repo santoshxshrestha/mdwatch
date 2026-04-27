@@ -1,3 +1,15 @@
+async function renderMermaid() {
+  mermaid.initialize({ startOnLoad: false });
+
+  const elements = document.querySelectorAll("pre.mermaid");
+
+  for (const [index, element] of elements.entries()) {
+    const graphDefinition = element.textContent;
+    const { svg } = await mermaid.render(`graphDiv-${index}`, graphDefinition);
+    element.innerHTML = svg;
+  }
+}
+
 function setThemeIcon(theme) {
   const button = document.querySelector(".theme-toggle");
   if (!button) return;
@@ -14,13 +26,6 @@ function setThemeIcon(theme) {
           <path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z" />
         </svg>
     `;
-}
-
-function highlightBlocks(root = document) {
-  if (!window.hljs) return;
-  root.querySelectorAll("pre code").forEach((block) => {
-    hljs.highlightElement(block);
-  });
 }
 
 function syncHighlightTheme(theme) {
@@ -57,6 +62,8 @@ function toggleTheme() {
 document.addEventListener("DOMContentLoaded", function () {
   const savedTheme = localStorage.getItem("theme");
   const html = document.documentElement;
+  renderMermaid();
+  hljs.highlightAll();
 
   if (savedTheme === "light") {
     html.setAttribute("data-theme", "light");
@@ -66,8 +73,6 @@ document.addEventListener("DOMContentLoaded", function () {
     setThemeIcon("dark");
     syncHighlightTheme("dark");
   }
-
-  highlightBlocks();
 });
 
 // Add smooth scrolling for anchor links
@@ -95,7 +100,8 @@ ws.onmessage = (event) => {
   const date = new Date();
   console.log(`updating content: ${date.toLocaleTimeString()}`);
   content.innerHTML = event.data;
-  highlightBlocks(content);
+  hljs.highlightAll();
+  renderMermaid();
 };
 
 ws.onclose = () => self.close();

@@ -370,3 +370,11 @@ kbd {
 .alert-success {
   border-left-color: #28a745;
 }
+
+pre.mermaid {
+  font-family: "trebuchet ms", verdana, arial;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 10px;
+}
