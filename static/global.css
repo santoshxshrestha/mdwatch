@@ -371,7 +371,8 @@ kbd {
   border-left-color: #28a745;
 }
 
-.mermaid {
+pre.mermaid {
+  font-family: "trebuchet ms", verdana, arial;
   display: flex;
   justify-content: center;
   align-items: center;

@@ -1,3 +1,15 @@
+async function renderMermaid() {
+  mermaid.initialize({ startOnLoad: false });
+
+  const elements = document.querySelectorAll(".mermaid");
+
+  for (const [index, element] of elements.entries()) {
+    const graphDefinition = element.textContent;
+    const { svg } = await mermaid.render(`graphDiv-${index}`, graphDefinition);
+    element.innerHTML = svg;
+  }
+}
+
 function setThemeIcon(theme) {
   const button = document.querySelector(".theme-toggle");
   if (!button) return;
@@ -50,6 +62,7 @@ function toggleTheme() {
 document.addEventListener("DOMContentLoaded", function () {
   const savedTheme = localStorage.getItem("theme");
   const html = document.documentElement;
+  renderMermaid();
 
   if (savedTheme === "light") {
     html.setAttribute("data-theme", "light");
@@ -87,6 +100,7 @@ ws.onmessage = (event) => {
   console.log(`updating content: ${date.toLocaleTimeString()}`);
   content.innerHTML = event.data;
   hljs.highlightAll();
+  renderMermaid();
 };
 
 ws.onclose = () => self.close();
