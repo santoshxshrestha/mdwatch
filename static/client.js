@@ -63,6 +63,7 @@ document.addEventListener("DOMContentLoaded", function () {
   const savedTheme = localStorage.getItem("theme");
   const html = document.documentElement;
   renderMermaid();
+  hljs.highlightAll();
 
   if (savedTheme === "light") {
     html.setAttribute("data-theme", "light");
