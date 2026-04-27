@@ -59,8 +59,6 @@ document.addEventListener("DOMContentLoaded", function () {
     setThemeIcon("dark");
     syncHighlightTheme("dark");
   }
-
-  highlightBlocks();
 });
 
 // Add smooth scrolling for anchor links
@@ -88,7 +86,7 @@ ws.onmessage = (event) => {
   const date = new Date();
   console.log(`updating content: ${date.toLocaleTimeString()}`);
   content.innerHTML = event.data;
-  highlightBlocks(content);
+  hljs.highlightAll();
 };
 
 ws.onclose = () => self.close();
