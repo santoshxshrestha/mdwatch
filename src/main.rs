@@ -18,7 +18,7 @@ use notify_debouncer_full::DebouncedEvent;
 use notify_debouncer_full::{DebounceEventResult, new_debouncer, notify::*};
 use pulldown_cmark::Options;
 use regex::Regex;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::time::{Duration, Instant};
 use tokio::fs;
 
@@ -52,10 +52,10 @@ fn get_embedded_file(file_path: &str) -> String {
 async fn ws_handler(
     req: HttpRequest,
     body: web::Payload,
-    file: web::Data<String>,
+    file_info: web::Data<FileInfo>,
 ) -> actix_web::Result<impl Responder> {
     let (response, mut session, mut _msg_stream) = actix_ws::handle(&req, body)?;
-    let file_path = file.as_str().to_string();
+    let file = file_info.file.to_path_buf();
     let (watch_tx, mut notify_rx) = mpsc::unbounded_channel::<DebouncedEvent>();
 
     let mut debouncer = new_debouncer(
@@ -72,8 +72,9 @@ async fn ws_handler(
     )
     .map_err(actix_web::error::ErrorInternalServerError)?;
 
+    // TODO: watch the base_dir rather then file
     debouncer
-        .watch(&file_path, RecursiveMode::NonRecursive)
+        .watch(&file, RecursiveMode::NonRecursive)
         .map_err(actix_web::error::ErrorInternalServerError)?;
 
     actix_web::rt::spawn(async move {
@@ -85,13 +86,13 @@ async fn ws_handler(
 
         while let Some(event) = notify_rx.recv().await {
             if matches!(event.kind, EventKind::Remove(RemoveKind::File)) {
-                eprintln!("File removed: {}", file_path);
+                eprintln!("File removed: {}", file.display());
                 break;
             }
             if matches!(event.kind, EventKind::Modify(ModifyKind::Data(_)))
                 && last_sent.elapsed() >= Duration::from_secs(1)
             {
-                let latest_markdown = match get_markdown(&file_path).await {
+                let latest_markdown = match get_markdown(&file).await {
                     Ok(md) => md,
                     Err(e) => {
                         eprintln!("Error reading markdown file: {e}");
@@ -150,7 +151,7 @@ fn rewrite_mermaid_tags(html: &str) -> String {
     re.replace_all(html, src).to_string()
 }
 
-async fn get_markdown(file_path: &String) -> std::io::Result<String> {
+async fn get_markdown(file_path: &PathBuf) -> std::io::Result<String> {
     let markdown_input: String = fs::read_to_string(file_path).await?;
     let options = Options::all();
     let parser = pulldown_cmark::Parser::new_ext(&markdown_input, options);
@@ -192,10 +193,9 @@ impl Default for Libs {
 }
 
 #[get("/")]
-async fn home(file: web::Data<String>) -> actix_web::Result<HttpResponse> {
-    let file_path = Path::new(file.as_str());
-
-    let file_name = match file_path.file_name() {
+async fn home(file_info: web::Data<FileInfo>) -> actix_web::Result<HttpResponse> {
+    let file = &file_info.file;
+    let file_name = match file.file_name() {
         Some(name) => name,
         None => {
             return Err(actix_web::error::ErrorInternalServerError(
@@ -204,7 +204,7 @@ async fn home(file: web::Data<String>) -> actix_web::Result<HttpResponse> {
         }
     };
 
-    if let Some(extension) = file_path.extension()
+    if let Some(extension) = file.extension()
         && extension != "md"
     {
         eprintln!(
@@ -216,7 +216,7 @@ async fn home(file: web::Data<String>) -> actix_web::Result<HttpResponse> {
         ));
     };
 
-    let html_output = match get_markdown(&file.as_str().to_string()).await {
+    let html_output = match get_markdown(&file.to_path_buf()).await {
         Ok(html) => html,
         Err(e) => {
             eprintln!("Error processing markdown file: {e}");
@@ -250,10 +250,11 @@ async fn home(file: web::Data<String>) -> actix_web::Result<HttpResponse> {
 /// Resolves the requested path relative to the markdown file's parent directory.
 #[get("/_local_image/{path:.*}")]
 async fn serve_local_image(
-    path: web::Path<String>,
-    base_dir: web::Data<PathBuf>,
+    path: web::Path<PathBuf>,
+    file_info: web::Data<FileInfo>,
 ) -> actix_web::Result<NamedFile> {
     let requested = path.into_inner();
+    let base_dir = &file_info.base_dir;
     let resolved = base_dir.join(&requested);
 
     // Canonicalize to prevent directory traversal attacks (e.g. ../../etc/passwd)
@@ -274,6 +275,12 @@ async fn serve_local_image(
     Ok(NamedFile::open(canonical)?)
 }
 
+#[derive(Clone)]
+struct FileInfo {
+    file: PathBuf,
+    base_dir: PathBuf,
+}
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     let args = MdwatchArgs::parse();
@@ -283,8 +290,7 @@ async fn main() -> std::io::Result<()> {
     let port = args.port.unwrap_or_else(get_random_port);
 
     // Resolve the parent directory of the markdown file for serving local images
-    let file_path = Path::new(&file);
-    let base_dir: PathBuf = file_path
+    let base_dir: PathBuf = file
         .parent()
         .map(|p| {
             if p.as_os_str().is_empty() {
@@ -294,6 +300,11 @@ async fn main() -> std::io::Result<()> {
             }
         })
         .unwrap_or_else(|| PathBuf::from("."));
+
+    let file_info = FileInfo {
+        file: file,
+        base_dir: base_dir,
+    };
 
     if ip == "0.0.0.0" {
         eprintln!("  Warning: Binding to 0.0.0.0 exposes your server to the entire network!");
@@ -308,8 +319,7 @@ async fn main() -> std::io::Result<()> {
             .route("/ws", web::get().to(ws_handler))
             .service(home)
             .service(serve_local_image)
-            .app_data(web::Data::new(file.clone()))
-            .app_data(web::Data::new(base_dir.clone()))
+            .app_data(web::Data::new(file_info.clone()))
     })
     .bind(format!("{}:{}", ip, port))
     {
