@@ -22,7 +22,8 @@ use std::path::PathBuf;
 use std::time::{Duration, Instant};
 use tokio::fs;
 
-use notify::{RecursiveMode, event::ModifyKind};
+use notify::RecursiveMode;
+use notify::event::{ModifyKind, RenameMode};
 use rust_embed::Embed;
 use tokio::sync::mpsc;
 
@@ -56,6 +57,7 @@ async fn ws_handler(
 ) -> actix_web::Result<impl Responder> {
     let (response, mut session, mut _msg_stream) = actix_ws::handle(&req, body)?;
     let file = file_info.file.to_path_buf();
+    let base_dir = file_info.base_dir.to_path_buf();
     let (watch_tx, mut notify_rx) = mpsc::unbounded_channel::<DebouncedEvent>();
 
     let mut debouncer = new_debouncer(
@@ -72,9 +74,8 @@ async fn ws_handler(
     )
     .map_err(actix_web::error::ErrorInternalServerError)?;
 
-    // TODO: watch the base_dir rather then file
     debouncer
-        .watch(&file, RecursiveMode::NonRecursive)
+        .watch(&base_dir, RecursiveMode::Recursive)
         .map_err(actix_web::error::ErrorInternalServerError)?;
 
     actix_web::rt::spawn(async move {
@@ -85,24 +86,39 @@ async fn ws_handler(
         let mut last_sent = Instant::now() - Duration::from_secs(1);
 
         while let Some(event) = notify_rx.recv().await {
-            if matches!(event.kind, EventKind::Remove(RemoveKind::File)) {
-                eprintln!("File removed: {}", file.display());
-                break;
-            }
-            if matches!(event.kind, EventKind::Modify(ModifyKind::Data(_)))
-                && last_sent.elapsed() >= Duration::from_secs(1)
-            {
-                let latest_markdown = match get_markdown(&file).await {
-                    Ok(md) => md,
-                    Err(e) => {
-                        eprintln!("Error reading markdown file: {e}");
-                        continue;
-                    }
-                };
-                last_sent = Instant::now();
-                if session.text(latest_markdown).await.is_err() {
+            let is_selected_file = event.paths.iter().any(|p| {
+                p.file_name()
+                    .and_then(|name| name.to_str())
+                    .map(|name| name == file.to_str().unwrap_or(""))
+                    .unwrap_or(false)
+            });
+
+            if is_selected_file {
+                println!("event-required: {:?}", event);
+                if matches!(event.kind, EventKind::Remove(RemoveKind::File)) {
+                    eprintln!("File removed: {}", file.display());
                     break;
                 }
+                let modified_selected_file =
+                    matches!(
+                        event.kind,
+                        EventKind::Modify(ModifyKind::Name(RenameMode::Both))
+                    ) || matches!(event.kind, EventKind::Modify(ModifyKind::Data(_)));
+
+                if modified_selected_file && last_sent.elapsed() >= Duration::from_secs(1) {
+                    let latest_markdown = match get_markdown(&file).await {
+                        Ok(md) => md,
+                        Err(e) => {
+                            eprintln!("Error reading markdown file: {e}");
+                            continue;
+                        }
+                    };
+                    last_sent = Instant::now();
+                    if session.text(latest_markdown).await.is_err() {
+                        break;
+                    }
+                }
+            } else {
             }
         }
 
