@@ -127,8 +127,7 @@ async fn ws_handler(
                         break;
                     }
                 }
-            } else {
-            }
+            } 
         }
 
         let _ = session.close(None).await;
@@ -327,8 +326,8 @@ async fn main() -> std::io::Result<()> {
         .unwrap_or_else(|| PathBuf::from("."));
 
     let file_info = FileInfo {
-        file: file,
-        base_dir: base_dir,
+        file,
+        base_dir,
     };
 
     if ip == "0.0.0.0" {
