@@ -34,18 +34,22 @@ It automatically downloads, compiles, and installs the latest version to your `$
 
 ### 2. Quick Install via Script
 
-**Alternative:** Installs the latest release binary to your system PATH.
+**Alternative:** Installs the latest release binary to your user PATH (no sudo).
 
 ```bash
 curl -sSfL https://raw.githubusercontent.com/vimlinuz/mdwatch/main/scripts/install.sh | bash
 ```
 
-- This script will:
-  1. Build `mdwatch` in release mode (if Rust is present).
-  2. Copy the binary to `/usr/local/bin`.
-  3. Make it executable.
+You can customize the install location (default is `~/.local/bin`):
 
-> **Tip:** You may need to enter your password for `sudo` privileges.
+```bash
+curl -sSfL https://raw.githubusercontent.com/vimlinuz/mdwatch/main/scripts/install.sh | INSTALL_DIR=~/.local/bin bash
+```
+
+- This script will:
+  1. Download the latest prebuilt release binary for your OS/arch.
+  2. Install it to `~/.local/bin` (or `$INSTALL_DIR`).
+  3. Make it executable.
 
 ---
 
@@ -68,16 +72,16 @@ If you prefer full control or want to customize the build:
 
    This places the binary at `target/release/mdwatch`.
 
-3. **Copy to a PATH directory (e.g., `/usr/local/bin`):**
+3. **Copy to a PATH directory (e.g., `~/.local/bin`):**
 
    ```bash
-   sudo cp target/release/mdwatch /usr/local/bin/mdwatch
+    cp target/release/mdwatch ~/.local/bin/mdwatch
    ```
 
 4. **(Optional) Ensure executable permission:**
 
    ```bash
-   sudo chmod +x /usr/local/bin/mdwatch
+    chmod +x ~/.local/bin/mdwatch
    ```
 
 5. **Run from anywhere:**
@@ -148,14 +152,10 @@ curl -sSfL https://raw.githubusercontent.com/vimlinuz/mdwatch/main/scripts/unins
 Remove the binary from your PATH:
 
 ```bash
-sudo rm /usr/local/bin/mdwatch
+rm ~/.local/bin/mdwatch
 ```
 
-or
-
-```bash
-sudo rm /usr/bin/mdwatch
-```
+or the directory you installed to.
 
 If you also want to remove your cloned repository:
 
@@ -184,7 +184,7 @@ mdwatch README.md [--ip 127.0.0.1] [--port 3000]
 
 - `--ip`: IP address to bind the server to (default: 127.0.0.1)
 
-- `--port`: Port number for the server (default: 3000)
+- `--port`: Port number for the server (If not provided, a random port will be used)
 
 ---
 

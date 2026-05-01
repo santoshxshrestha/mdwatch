@@ -1,4 +1,4 @@
-name: Rust
+name: Release
 on:
   workflow_run:
     workflows: ["Test"]
@@ -28,6 +28,9 @@ jobs:
         with:
           toolchain: stable
           components: rustfmt, clippy
+
+      - name: Install cross
+        run: cargo install cross
 
       - name: Get current version
         id: current
@@ -72,11 +75,31 @@ jobs:
           git tag "v${{ steps.current.outputs.version }}"
           git push origin "v${{ steps.current.outputs.version }}"
 
+      - name: Build release binaries
+        if: steps.changed.outputs.changed == 'true'
+        run: |
+          cross build --release --target x86_64-unknown-linux-gnu
+          cross build --release --target aarch64-unknown-linux-gnu
+          cross build --release --target x86_64-apple-darwin
+          cross build --release --target aarch64-apple-darwin
+
+      - name: Package release assets
+        if: steps.changed.outputs.changed == 'true'
+        run: |
+          version=${{ steps.current.outputs.version }}
+          mkdir -p dist
+          tar -czf "dist/mdwatch-${version}-x86_64-unknown-linux-gnu.tar.gz" -C "target/x86_64-unknown-linux-gnu/release" mdwatch
+          tar -czf "dist/mdwatch-${version}-aarch64-unknown-linux-gnu.tar.gz" -C "target/aarch64-unknown-linux-gnu/release" mdwatch
+          tar -czf "dist/mdwatch-${version}-x86_64-apple-darwin.tar.gz" -C "target/x86_64-apple-darwin/release" mdwatch
+          tar -czf "dist/mdwatch-${version}-aarch64-apple-darwin.tar.gz" -C "target/aarch64-apple-darwin/release" mdwatch
+
       - name: Create GitHub Release
         if: steps.changed.outputs.changed == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create "v${{ steps.current.outputs.version }}" \
-            --title "v${{ steps.current.outputs.version }}" \
-            --generate-notes
+          version=${{ steps.current.outputs.version }}
+          gh release create "v${version}" \
+            --title "v${version}" \
+            --generate-notes \
+            dist/*.tar.gz
