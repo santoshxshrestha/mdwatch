@@ -57,6 +57,16 @@ async fn ws_handler(
 ) -> actix_web::Result<impl Responder> {
     let (response, mut session, mut _msg_stream) = actix_ws::handle(&req, body)?;
     let file = file_info.file.to_path_buf();
+
+    let file_name = match file.file_name() {
+        Some(name) => name.to_os_string(),
+        None => {
+            return Err(actix_web::error::ErrorInternalServerError(
+                "Failed to get file name",
+            ));
+        }
+    };
+
     let base_dir = file_info.base_dir.to_path_buf();
     let (watch_tx, mut notify_rx) = mpsc::unbounded_channel::<DebouncedEvent>();
 
@@ -89,12 +99,11 @@ async fn ws_handler(
             let is_selected_file = event.paths.iter().any(|p| {
                 p.file_name()
                     .and_then(|name| name.to_str())
-                    .map(|name| name == file.to_str().unwrap_or(""))
+                    .map(|name| name == file_name)
                     .unwrap_or(false)
             });
 
             if is_selected_file {
-                println!("event-required: {:?}", event);
                 if matches!(event.kind, EventKind::Remove(RemoveKind::File)) {
                     eprintln!("File removed: {}", file.display());
                     break;
