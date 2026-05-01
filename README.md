@@ -51,7 +51,7 @@ curl -sSfL https://raw.githubusercontent.com/vimlinuz/mdwatch/main/scripts/insta
   2. Install it to `~/.local/bin` (or `$INSTALL_DIR`).
   3. Make it executable.
 
-> **Note:** Prebuilt releases are only tested on Linux x86_64 at the moment.
+> **Note:** Builds/compilation have only been tested on my Linux x86_64 machine so far.
 
 ---
 
