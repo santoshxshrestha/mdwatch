@@ -104,8 +104,6 @@ async fn ws_handler(
             });
 
             if is_selected_file {
-                println!("event: {:?}", event);
-
                 if matches!(event.kind, EventKind::Remove(RemoveKind::File)) {
                     eprintln!("File removed: {}", file.display());
                     break;
