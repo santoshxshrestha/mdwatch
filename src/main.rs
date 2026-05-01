@@ -127,7 +127,7 @@ async fn ws_handler(
                         break;
                     }
                 }
-            } 
+            }
         }
 
         let _ = session.close(None).await;
@@ -325,10 +325,7 @@ async fn main() -> std::io::Result<()> {
         })
         .unwrap_or_else(|| PathBuf::from("."));
 
-    let file_info = FileInfo {
-        file,
-        base_dir,
-    };
+    let file_info = FileInfo { file, base_dir };
 
     if ip == "0.0.0.0" {
         eprintln!("  Warning: Binding to 0.0.0.0 exposes your server to the entire network!");
