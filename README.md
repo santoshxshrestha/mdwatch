@@ -184,7 +184,7 @@ mdwatch README.md [--ip 127.0.0.1] [--port 3000]
 
 - `--ip`: IP address to bind the server to (default: 127.0.0.1)
 
-- `--port`: Port number for the server (default: 3000)
+- `--port`: Port number for the server (If not provided, a random port will be used)
 
 ---
 
