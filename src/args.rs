@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use clap::Parser;
 
 #[derive(Debug, Parser)]
@@ -9,7 +11,7 @@ use clap::Parser;
 )]
 pub struct MdwatchArgs {
     /// Path to the markdown file
-    pub file: String,
+    pub file: PathBuf,
 
     /// IP address to bind the server
     #[clap(short, long, default_value = "127.0.0.1")]
