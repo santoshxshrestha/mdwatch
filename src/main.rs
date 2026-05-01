@@ -23,7 +23,7 @@ use std::time::{Duration, Instant};
 use tokio::fs;
 
 use notify::RecursiveMode;
-use notify::event::{ModifyKind, RenameMode};
+use notify::event::ModifyKind;
 use rust_embed::Embed;
 use tokio::sync::mpsc;
 
@@ -104,15 +104,15 @@ async fn ws_handler(
             });
 
             if is_selected_file {
+                println!("event: {:?}", event);
+
                 if matches!(event.kind, EventKind::Remove(RemoveKind::File)) {
                     eprintln!("File removed: {}", file.display());
                     break;
                 }
                 let modified_selected_file =
-                    matches!(
-                        event.kind,
-                        EventKind::Modify(ModifyKind::Name(RenameMode::Both))
-                    ) || matches!(event.kind, EventKind::Modify(ModifyKind::Data(_)));
+                    matches!(event.kind, EventKind::Modify(ModifyKind::Name(_)))
+                        || matches!(event.kind, EventKind::Modify(ModifyKind::Data(_)));
 
                 if modified_selected_file && last_sent.elapsed() >= Duration::from_secs(1) {
                     let latest_markdown = match get_markdown(&file).await {
