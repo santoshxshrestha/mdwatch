@@ -23,28 +23,20 @@ echo -e "${RESET}"
 os=$(uname -s)
 arch=$(uname -m)
 
-case "$os" in
-    Linux) os="linux" ;;
-    Darwin) os="darwin" ;;
-    *)
-        echo -e "${FAIL} Unsupported OS: $os"
-        exit 1
-        ;;
-esac
+if [ "$os" != "Linux" ]; then
+    echo -e "${FAIL} Unsupported OS: $os (Linux only)"
+    exit 1
+fi
 
 case "$arch" in
     x86_64|amd64) arch="x86_64" ;;
-    arm64|aarch64) arch="aarch64" ;;
     *)
-        echo -e "${FAIL} Unsupported architecture: $arch"
+        echo -e "${FAIL} Unsupported architecture: $arch (x86_64 only)"
         exit 1
         ;;
 esac
 
-target="${arch}-unknown-${os}-gnu"
-if [ "$os" = "darwin" ]; then
-    target="${arch}-apple-darwin"
-fi
+target="${arch}-unknown-linux-gnu"
 
 echo -e "${INFO} Detecting latest release..."
 latest_json=$(curl -sSfL "https://api.github.com/repos/${REPO}/releases/latest")

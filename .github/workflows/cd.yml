@@ -79,9 +79,6 @@ jobs:
         if: steps.changed.outputs.changed == 'true'
         run: |
           cross build --release --target x86_64-unknown-linux-gnu
-          cross build --release --target aarch64-unknown-linux-gnu
-          cross build --release --target x86_64-apple-darwin
-          cross build --release --target aarch64-apple-darwin
 
       - name: Package release assets
         if: steps.changed.outputs.changed == 'true'
@@ -89,9 +86,6 @@ jobs:
           version=${{ steps.current.outputs.version }}
           mkdir -p dist
           tar -czf "dist/mdwatch-${version}-x86_64-unknown-linux-gnu.tar.gz" -C "target/x86_64-unknown-linux-gnu/release" mdwatch
-          tar -czf "dist/mdwatch-${version}-aarch64-unknown-linux-gnu.tar.gz" -C "target/aarch64-unknown-linux-gnu/release" mdwatch
-          tar -czf "dist/mdwatch-${version}-x86_64-apple-darwin.tar.gz" -C "target/x86_64-apple-darwin/release" mdwatch
-          tar -czf "dist/mdwatch-${version}-aarch64-apple-darwin.tar.gz" -C "target/aarch64-apple-darwin/release" mdwatch
 
       - name: Create GitHub Release
         if: steps.changed.outputs.changed == 'true'

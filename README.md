@@ -47,9 +47,11 @@ curl -sSfL https://raw.githubusercontent.com/vimlinuz/mdwatch/main/scripts/insta
 ```
 
 - This script will:
-  1. Download the latest prebuilt release binary for your OS/arch.
+  1. Download the latest prebuilt Linux x86_64 release binary.
   2. Install it to `~/.local/bin` (or `$INSTALL_DIR`).
   3. Make it executable.
+
+> **Note:** Prebuilt releases are only tested on Linux x86_64 at the moment.
 
 ---
 
